@@ -1,23 +1,23 @@
 // WonderBlocks main: boot, game loop, building, multiplayer glue, saving.
 import * as THREE from 'three';
-import { B, blockDef, isBreakable } from 'wb-shared/blocks.js?v=8';
-import { getSpawn, biomeNameAt } from 'wb-shared/worldgen.js?v=8';
-import { MSG, ROLES, makeRoomCode } from 'wb-shared/protocol.js?v=8';
-import { World } from './world.js?v=8';
-import { loadAtlas } from './textures.js?v=8';
-import { loadFaces } from './character.js?v=8';
-import { Player, RemotePlayer } from './player.js?v=8';
-import { Input } from './input.js?v=8';
-import { Inventory } from './inventory.js?v=8';
-import { UI } from './ui.js?v=8';
-import { CraftingUI } from './crafting.js?v=8';
-import { isItem, itemDef, toolTimeMultiplier } from 'wb-shared/items.js?v=8';
-import { CritterManager } from './animals.js?v=8';
-import { FOOD_DROPS, foodDef, isFood } from 'wb-shared/foods.js?v=8';
-import { ANIMAL_DEFS } from 'wb-shared/animalDefs.js?v=8';
-import { QuestManager } from './quests.js?v=8';
-import { AudioSys } from './audio.js?v=8';
-import { Net } from './net.js?v=8';
+import { B, blockDef, isBreakable } from 'wb-shared/blocks.js?v=9';
+import { getSpawn, biomeNameAt } from 'wb-shared/worldgen.js?v=9';
+import { MSG, ROLES, makeRoomCode } from 'wb-shared/protocol.js?v=9';
+import { World } from './world.js?v=9';
+import { loadAtlas } from './textures.js?v=9';
+import { loadFaces } from './character.js?v=9';
+import { Player, RemotePlayer } from './player.js?v=9';
+import { Input } from './input.js?v=9';
+import { Inventory } from './inventory.js?v=9';
+import { UI } from './ui.js?v=9';
+import { CraftingUI } from './crafting.js?v=9';
+import { isItem, itemDef, toolTimeMultiplier } from 'wb-shared/items.js?v=9';
+import { CritterManager } from './animals.js?v=9';
+import { FOOD_DROPS, foodDef, isFood } from 'wb-shared/foods.js?v=9';
+import { ANIMAL_DEFS } from 'wb-shared/animalDefs.js?v=9';
+import { QuestManager } from './quests.js?v=9';
+import { AudioSys } from './audio.js?v=9';
+import { Net } from './net.js?v=9';
 
 const SAVE_KEY = 'wb_demo';
 const REACH = 6;
@@ -331,9 +331,9 @@ class Game {
     else if (a === 'menu') this.ui.togglePause(this.isMulti, this.myRole === ROLES.OWNER);
   }
   toggleCamera() {
-    // First-person removed per user request — third-person only.
     if (!this.player) return;
-    this.player.firstPerson = false;
+    this.player.firstPerson = !this.player.firstPerson;
+    this.ui.toast(this.player.firstPerson ? '🎥 First-person' : '🎥 Third-person');
   }
   playerList() {
     const list = [{ id: this.myId || 'me', name: this.playerName || 'Builder', role: this.myRole }];

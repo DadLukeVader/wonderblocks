@@ -1,8 +1,8 @@
 // WonderBlocks UI: menus, HUD, inventory, chat, tutorial, touch controls.
-import { B, BLOCKS, CATEGORIES, blockDef } from 'wb-shared/blocks.js?v=8';
-import { FOODS, foodDef } from 'wb-shared/foods.js?v=8';
-import { ITEMS, isItem, itemDef, totalDefense } from 'wb-shared/items.js?v=8';
-import { SKIN_TONES, HAIR_STYLES, HAIR_COLORS, SHIRT_COLORS, PANTS_COLORS } from './character.js?v=8';
+import { B, BLOCKS, CATEGORIES, blockDef } from 'wb-shared/blocks.js?v=9';
+import { FOODS, foodDef } from 'wb-shared/foods.js?v=9';
+import { ITEMS, isItem, itemDef, totalDefense } from 'wb-shared/items.js?v=9';
+import { SKIN_TONES, HAIR_STYLES, HAIR_COLORS, SHIRT_COLORS, PANTS_COLORS } from './character.js?v=9';
 
 const SWATCH = {
   1: '#79c95c', 2: '#9a6a44', 3: '#b9b9c4', 4: '#f0dfa4', 5: '#8a5a32', 6: '#58b368',
@@ -71,6 +71,7 @@ export class UI {
           <button data-a="players" title="Players">👥</button>
           <button data-a="emotes" title="Emotes">😄</button>
           <button data-a="crafting" title="Crafting (C)">🛠️</button>
+          <button data-a="camera" title="Camera: 1st/3rd person (V)">🎥</button>
           <button data-a="claim" title="Claim land">🚩</button>
           <button data-a="mute" title="Mute (M)">🔊</button>
         </div>
@@ -199,9 +200,9 @@ export class UI {
       <div class="helptext">
       <b>🖥️ Computer:</b> WASD move · Space jump · mouse look (click to lock) ·
       <b>Left click</b> break · <b>Right click</b> place · wheel / 1–9 hotbar ·
-      E inventory · Enter chat · Shift sprint<br><br>
+      E inventory · Enter chat · V or 🎥 button = first-person · Shift sprint<br><br>
       <b>📱 Phone/tablet:</b> left joystick moves · drag to look ·
-      tap a block to target it, then JUMP / ⛏️ / 🧱 buttons.<br><br>
+      tap a block to target it, then JUMP / ⛏️ / 🧱 buttons · 🎥 toggles camera.<br><br>
       Break blocks to collect them, open 🎒 to pick materials, and build!
       Claim land with 🚩 to protect your builds. Feed wild animals their favorite snacks to tame them as pets! 🍎
       </div>
