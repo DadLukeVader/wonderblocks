@@ -11,6 +11,19 @@ export const B = {
   PALM_WOOD: 27, PALM_LEAVES: 28, BERRY_BUSH: 29, TALL_GRASS: 30,
   DOOR: 31, WINDOW: 32, STONE_BRICK: 33, SNOW_BLOCK: 34, BEDROCK: 35,
   BOOKSHELF: 36, FENCE: 37, CLAIM_FLAG: 38, TORCH: 39, WORKBENCH: 40,
+  // --- Phase 3: building expansion (41-80). Tiles reuse closest atlas match.
+  // Wood variants
+  BIRCH_WOOD: 41, OAK_WOOD: 42, DARK_OAK_WOOD: 43, CHERRY_WOOD: 44, SPRUCE_WOOD: 45,
+  BIRCH_PLANKS: 46, OAK_PLANKS: 47, DARK_OAK_PLANKS: 48, CHERRY_PLANKS: 49, BAMBOO_PLANKS: 50,
+  // Stone variants
+  GRANITE: 51, MARBLE: 52, SANDSTONE: 53, COBBLESTONE: 54, MOSSY_STONE: 55,
+  SMOOTH_STONE: 56, SLATE: 57, LIMESTONE: 58, BASALT: 59, CHISELED_STONE: 60,
+  // Colored blocks
+  PINK_BLOCK: 61, CYAN_BLOCK: 62, PURPLE_BLOCK: 63, ORANGE_BLOCK: 64, LIME_BLOCK: 65,
+  MAGENTA_BLOCK: 66, YELLOW_BLOCK: 67, RED_BLOCK: 68, BLUE_BLOCK: 69, WHITE_BLOCK: 70,
+  // Functional / decorative
+  GLASS_PANE: 71, DARK_BRICKS: 72, CRACKED_STONE_BRICK: 73, IRON_BLOCK: 74, COPPER_BLOCK: 75,
+  DIAMOND_BLOCK: 76, EMERALD_BLOCK: 77, OBSIDIAN: 78, MOSSY_BRICKS: 79, TERRACOTTA: 80,
 };
 
 const D = (name, cat, tiles, opts = {}) => ({
@@ -69,6 +82,50 @@ export const BLOCKS = {
   [B.CLAIM_FLAG]: D('Claim Flag', 'special', 38, { solid: false, cross: true, opaque: false, hardness: 0.2 }),
   [B.TORCH]: D('Torch', 'decor', 40, { solid: false, cross: true, opaque: false, hardness: 0.2, glow: true }),
   [B.WORKBENCH]: D('Workbench', 'building', 41, { hardness: 0.7 }),
+  // --- Wood variants (Phase 3) ---
+  [B.BIRCH_WOOD]: D('Birch Wood', 'building', { top: 6, side: 5, bottom: 6 }, { hardness: 0.7 }),
+  [B.OAK_WOOD]: D('Oak Wood', 'building', { top: 6, side: 5, bottom: 6 }, { hardness: 0.7 }),
+  [B.DARK_OAK_WOOD]: D('Dark Oak Wood', 'building', { top: 6, side: 27, bottom: 6 }, { hardness: 0.7 }),
+  [B.CHERRY_WOOD]: D('Cherry Wood', 'building', { top: 6, side: 5, bottom: 6 }, { hardness: 0.7 }),
+  [B.SPRUCE_WOOD]: D('Spruce Wood', 'building', { top: 6, side: 27, bottom: 6 }, { hardness: 0.7 }),
+  [B.BIRCH_PLANKS]: D('Birch Planks', 'building', 12, { hardness: 0.7 }),
+  [B.OAK_PLANKS]: D('Oak Planks', 'building', 12, { hardness: 0.7 }),
+  [B.DARK_OAK_PLANKS]: D('Dark Oak Planks', 'building', 27, { hardness: 0.7 }),
+  [B.CHERRY_PLANKS]: D('Cherry Planks', 'building', 12, { hardness: 0.7 }),
+  [B.BAMBOO_PLANKS]: D('Bamboo Planks', 'building', 27, { hardness: 0.7 }),
+  // --- Stone variants (Phase 3) ---
+  [B.GRANITE]: D('Granite', 'building', 3, { hardness: 1.1 }),
+  [B.MARBLE]: D('Marble', 'building', 34, { hardness: 1.1 }),
+  [B.SANDSTONE]: D('Sandstone', 'building', 4, { hardness: 1.0 }),
+  [B.COBBLESTONE]: D('Cobblestone', 'building', 3, { hardness: 1.2 }),
+  [B.MOSSY_STONE]: D('Mossy Stone', 'building', 3, { hardness: 1.1 }),
+  [B.SMOOTH_STONE]: D('Smooth Stone', 'building', 3, { hardness: 1.1 }),
+  [B.SLATE]: D('Slate', 'building', 34, { hardness: 1.2 }),
+  [B.LIMESTONE]: D('Limestone', 'building', 4, { hardness: 1.0 }),
+  [B.BASALT]: D('Basalt', 'building', 35, { hardness: 1.3 }),
+  [B.CHISELED_STONE]: D('Chiseled Stone', 'building', 34, { hardness: 1.1 }),
+  // --- Colored blocks (Phase 3) ---
+  [B.PINK_BLOCK]: D('Pink Block', 'building', 31, { hardness: 0.6 }),
+  [B.CYAN_BLOCK]: D('Cyan Block', 'building', 14, { hardness: 0.6 }),
+  [B.PURPLE_BLOCK]: D('Purple Block', 'building', 23, { hardness: 0.6 }),
+  [B.ORANGE_BLOCK]: D('Orange Block', 'building', 30, { hardness: 0.6 }),
+  [B.LIME_BLOCK]: D('Lime Block', 'building', 17, { hardness: 0.6 }),
+  [B.MAGENTA_BLOCK]: D('Magenta Block', 'building', 31, { hardness: 0.6 }),
+  [B.YELLOW_BLOCK]: D('Yellow Block', 'building', 30, { hardness: 0.6 }),
+  [B.RED_BLOCK]: D('Red Block', 'building', 13, { hardness: 0.6 }),
+  [B.BLUE_BLOCK]: D('Blue Block', 'building', 14, { hardness: 0.6 }),
+  [B.WHITE_BLOCK]: D('White Block', 'building', 8, { hardness: 0.6 }),
+  // --- Functional / decorative (Phase 3) ---
+  [B.GLASS_PANE]: D('Glass Pane', 'building', 15, { hardness: 0.3, opaque: false }),
+  [B.DARK_BRICKS]: D('Dark Bricks', 'building', 13, { hardness: 1.0 }),
+  [B.CRACKED_STONE_BRICK]: D('Cracked Stone Bricks', 'building', 34, { hardness: 1.1 }),
+  [B.IRON_BLOCK]: D('Iron Block', 'special', 34, { hardness: 1.4 }),
+  [B.COPPER_BLOCK]: D('Copper Block', 'special', 13, { hardness: 1.2 }),
+  [B.DIAMOND_BLOCK]: D('Diamond Block', 'special', 22, { hardness: 1.6, glow: true }),
+  [B.EMERALD_BLOCK]: D('Emerald Block', 'special', 17, { hardness: 1.6, glow: true }),
+  [B.OBSIDIAN]: D('Obsidian', 'special', 35, { hardness: 2.0 }),
+  [B.MOSSY_BRICKS]: D('Mossy Bricks', 'building', 13, { hardness: 1.0 }),
+  [B.TERRACOTTA]: D('Terracotta', 'building', 10, { hardness: 0.8 }),
 };
 
 // Fix tall grass tile index (kept readable above)

@@ -50,7 +50,7 @@ export function validateEdit({ x, y, z, b }, playerId, roles, claims, getBlock) 
   } else {
     if (x < 0 || x >= 128 || z < 0 || z >= 128) return 'Outside the world.';
   }
-  if (!Number.isInteger(b) || b < 0 || b > B.WORKBENCH) return 'Unknown block.';
+  if (!Number.isInteger(b) || b < 0 || b > B.TERRACOTTA) return 'Unknown block.';
   const role = roles[playerId] || ROLES.BUILDER;
   if (role === ROLES.VISITOR) return 'Visitors cannot build. Ask the owner to promote you.';
   const cur = getBlock(x, y, z);

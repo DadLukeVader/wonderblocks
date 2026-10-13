@@ -33,6 +33,12 @@ export class Player {
     this.itemIconMap = new Map(); // itemId -> sprite path (set by main.js)
     this._texLoader = new THREE.TextureLoader();
     this.swingT = 0;
+    // Survival stats (Phase 1)
+    this.health = 20; this.maxHealth = 20; // 10 hearts
+    this.hunger = 20; this.maxHunger = 20; // 10 drumsticks
+    this._fallPeak = 0; // tracks lowest Y velocity before landing
+    this._hungerTick = 0;
+    this.dead = false;
   }
 
   solidAt(bx, by, bz) { return isSolid(this.world.get(bx, by, bz)); }
@@ -66,7 +72,15 @@ export class Player {
             } else {
               if ((by + 1) - p.y <= (p.y + PH) - by) {
                 p.y += (by + 1) - p.y;
-                if (this.vel.y <= 0.01) this.onGround = true;
+                if (this.vel.y <= 0.01) {
+                  // Landing — apply fall damage based on peak fall speed
+                  if (!this.onGround && this._fallPeak < -12) {
+                    const dmg = Math.floor((-this._fallPeak - 12) / 4);
+                    if (dmg > 0) this.damage(dmg, 'fall');
+                  }
+                  this._fallPeak = 0;
+                  this.onGround = true;
+                }
               } else {
                 p.y -= (p.y + PH) - by;
               }
@@ -103,6 +117,10 @@ export class Player {
       this.vel.y = Math.max(-3.2, Math.min(4.2, this.vel.y));
       this.onGround = false;
     } else {
+      this.vel.y -= 28 * dt;
+      // Track fall speed for damage calculation
+      if (!this.onGround && this.vel.y < this._fallPeak) this._fallPeak = this.vel.y;
+    } else {
       this.vel.y -= 26 * dt;
       if (this.vel.y < -30) this.vel.y = -30;
       if (mv.jump && this.onGround) { this.vel.y = 8.8; this.onGround = false; }
@@ -136,6 +154,20 @@ export class Player {
     // animation
     this.walkPhase += dt * (2 + this.speed2d * 1.9);
     if (this.swingT > 0) this.swingT = Math.max(0, this.swingT - dt);
+    // Hunger: depletes slowly; sprinting and swimming drain faster
+    if (!this.dead) {
+      this._hungerTick += dt;
+      if (this._hungerTick >= 4) {
+        this._hungerTick = 0;
+        let drain = 1;
+        if (this.speed2d > 5) drain = 2; // sprinting
+        if (this.inWater) drain = 2;
+        this.hunger = Math.max(0, this.hunger - drain);
+        if (this.hunger <= 0) this.damage(1, 'starve'); // starving hurts
+        else if (this.hunger >= 18 && this.health < this.maxHealth) this.heal(1); // regen when well-fed
+        if (this.onHunger) this.onHunger(this.hunger);
+      }
+    }
     let mode = 'idle';
     if (this.emote && performance.now() < this.emoteUntil) mode = this.emote;
     else if (this.inWater && this.speed2d > 0.5) mode = 'swim';
@@ -153,6 +185,39 @@ export class Player {
 
   // Trigger a tool swing animation (call when mining/attacking)
   swing() { this.swingT = 0.35; }
+
+  // Survival: take damage (amount in half-hearts). cause: 'fall'|'mob'|'starve'|'drown'
+  damage(amount, cause = 'mob') {
+    if (this.dead || this.godMode) return;
+    this.health = Math.max(0, this.health - amount);
+    if (this.onDamage) this.onDamage(amount, cause, this.health);
+    if (this.health <= 0) this.die(cause);
+  }
+  heal(amount) {
+    if (this.dead) return;
+    this.health = Math.min(this.maxHealth, this.health + amount);
+    if (this.onHeal) this.onHeal(this.health);
+  }
+  // Eat food: restores hunger (and small health if hunger is full)
+  eat(hungerRestore, healthRestore = 0) {
+    if (this.dead) return;
+    this.hunger = Math.min(this.maxHunger, this.hunger + hungerRestore);
+    if (healthRestore) this.heal(healthRestore);
+    if (this.onEat) this.onEat(this.hunger);
+  }
+  die(cause) {
+    this.dead = true;
+    this.health = 0;
+    if (this.onDeath) this.onDeath(cause);
+  }
+  // Called on respawn: reset stats
+  revive() {
+    this.dead = false;
+    this.health = this.maxHealth;
+    this.hunger = this.maxHunger;
+    this._fallPeak = 0;
+    this.vel.set(0, 0, 0);
+  }
 
   playEmote(e) { this.emote = e; this.emoteUntil = performance.now() + 2600; }
 

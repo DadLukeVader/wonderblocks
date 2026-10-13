@@ -91,6 +91,7 @@ export class UI {
           <button data-e="dance">💃</button><button data-e="love">❤️</button>
         </div>
         <div id="hotbar"></div>
+        <div id="vitals"><div id="hearts"></div><div id="hungerbar"></div></div>
         <div id="toasts"></div>
         <div id="chat" class="hidden"><div id="chatlog"></div><input id="chatin" maxlength="200" placeholder="Say something nice… (Enter to send)"></div>
         <div id="players" class="panel hidden"></div>
@@ -232,6 +233,19 @@ export class UI {
     el('loading').classList.remove('hidden');
     el('loadfill').style.width = Math.round(p * 100) + '%';
     el('loadlabel').textContent = label;
+  }
+
+  // Survival HUD: hearts (health) and drumsticks (hunger)
+  renderVitals(health, maxHealth, hunger, maxHunger) {
+    const h = el('hearts'), f = el('hungerbar');
+    if (!h || !f) return;
+    const hearts = Math.ceil(maxHealth / 2), hFull = Math.floor(health / 2), hHalf = health % 2;
+    let hs = '';
+    for (let i = 0; i < hearts; i++) hs += i < hFull ? '❤️' : (i === hFull && hHalf ? '💔' : '🖤');
+    const drums = Math.ceil(maxHunger / 2), fFull = Math.floor(hunger / 2), fHalf = hunger % 2;
+    let fs = '';
+    for (let i = 0; i < drums; i++) fs += i < fFull ? '🍗' : (i === fFull && fHalf ? '🍖' : '🦴');
+    h.innerHTML = hs; f.innerHTML = fs;
   }
 
   renderHotbar(inv) {
