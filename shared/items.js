@@ -1,7 +1,8 @@
 // WonderBlocks shared item registry: craftable tools, weapons and armor.
 //
 // Item ids 100-129 (blocks are 0-94; food items 130-143 belong to the animals
-// subsystem + Phase 4 cooking; 140, 144+ are pet accessories / utility tools).
+// subsystem + Phase 4 cooking; 140, 144+ are pet accessories / utility tools;
+// 147 is the Emerald trading currency for Phase 7 villagers).
 // Torch (108), Workbench (109) and Furnace (146) are "utility items": crafting
 // them yields the placeable blocks B.TORCH (39) / B.WORKBENCH (40) / B.FURNACE (82)
 // instead of an inventory item.
@@ -138,6 +139,9 @@ export const ITEMS = {
   146: { name: 'Furnace', kind: 'tool', tier: 'stone', placesBlock: 82, // 82 = B.FURNACE
     recipe: { [B.STONE]: 6, [B.WOOD]: 2 },
     icon: '🔥', color: '#8f959e', desc: 'Smelt raw food into tasty meals. Right-click a placed furnace to cook.' },
+  // ---------------- Phase 7: trading currency ----------------
+  147: { name: 'Emerald', kind: 'currency',
+    icon: '💚', color: '#2ecc71', desc: 'Shiny trading currency. Villagers love these!' },
 };
 
 // stamp numeric ids onto entries for convenient iteration

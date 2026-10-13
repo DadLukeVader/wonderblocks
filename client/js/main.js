@@ -195,6 +195,15 @@ class Game {
         this.audio.pickup();
       };
     } catch { /* monsters are optional */ }
+    // Villager NPCs (Phase 7)
+    try {
+      const { VillagerManager } = await import('./villagers.js?v=18');
+      this.villagers = new VillagerManager(
+        this.scene, this.world, this.player, this.inv, this.ui, this.audio);
+      // Restore saved villagers or spawn fresh
+      const vsave = save?.villagers || null;
+      this.villagers.load(vsave);
+    } catch { /* villagers are optional */ }
     // Load item sprites for the 3D held-item display
     try {
       const { loadItemIcons } = await import('./itemArt.js?v=19');
@@ -526,6 +535,7 @@ class Game {
         tutorialDone: this.tutorialDoneFlag,
         pet: this.pet ? { kind: this.pet.kind, name: this.pet.name } : null, // legacy (read path only)
         pets: this.critters ? this.critters.myPets().map(c => ({ kind: c.kind, name: c.name, collar: c.collarColor || null, baby: !!c.baby })) : [],
+        villagers: this.villagers ? this.villagers.save() : null, // Phase 7
       }));
     } catch { /* noop */ }
   }
@@ -803,9 +813,14 @@ class Game {
 
     // placing (edge) — or lighting a portal with Flint & Steel
     if (this.input.consumePlaceEdge() && hit) {
-      const sel = this.inv.hotbar[this.inv.sel];
-      if (sel === FLINT_ID) this.tryLightPortal(hit);
-      else this.tryPlace(hit);
+      // Phase 7: right-click a villager to trade (takes priority over placing)
+      if (this.villagers && this.villagers.tryInteract()) {
+        // villager handled it — don't place a block too
+      } else {
+        const sel = this.inv.hotbar[this.inv.sel];
+        if (sel === FLINT_ID) this.tryLightPortal(hit);
+        else this.tryPlace(hit);
+      }
     }
     // hotbar select
     const w = this.input.consumeWheel();
@@ -969,6 +984,11 @@ class Game {
     if (this.monsters) {
       const isNight = this.world.isNight ? this.world.isNight() : false;
       this.monsters.update(dt, isNight, (x, z) => this.world.biomeAt ? this.world.biomeAt(x, z) : 'forest');
+    }
+    // Phase 7: villagers (day wander, night indoors)
+    if (this.villagers) {
+      const isNight = this.world.isNight ? this.world.isNight() : false;
+      this.villagers.update(dt, isNight);
     }
     for (const [, r] of this.remotes) r.update(dt);
 

@@ -186,3 +186,12 @@ html, body { margin: 0; padding: 0; overflow: hidden; height: 100%; background: 
 .fprogbar { height: 100%; background: linear-gradient(90deg, #ffb84d, #ff7d3c); border-radius: 6px; transition: width 0.5s; }
 
 #minimap { position: fixed; top: 70px; right: 12px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.7); box-shadow: 0 2px 8px rgba(0,0,0,0.3); z-index: 40; }
+
+/* Phase 7: villager trading panel */
+#villager-trade .trows { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+#villager-trade .trow { display: flex; align-items: center; gap: 10px; background: #f4f7fd; border-radius: 10px; padding: 8px 12px; }
+#villager-trade .tlabel { flex: 1; font-size: 14px; }
+#villager-trade .thave { font-size: 13px; color: #6a7a99; min-width: 44px; text-align: right; }
+#villager-trade .tbtn { background: #4a9a5a; color: #fff; border: none; border-radius: 8px; padding: 8px 14px; font-size: 14px; cursor: pointer; }
+#villager-trade .tbtn:active { background: #3a7a48; }
+#villager-trade .tbtn.dis { background: #c0c8d8; cursor: default; }
