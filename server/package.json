@@ -1,0 +1,1 @@
+{"dependencies":{"ws":"^8.18.0"},"description":"WonderBlocks: Build Together — multiplayer voxel sandbox server","main":"server.js","name":"wonderblocks-server","scripts":{"start":"node ../wonderblocks-host.js","test":"node ../tests/server-protocol.test.mjs"},"type":"module","version":"1.0.0"}

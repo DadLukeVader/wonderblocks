@@ -1,0 +1,8 @@
+node_modules/
+wonderblocks-data/
+art-source/
+wonderblocks-standalone.html
+tools/
+tests/
+*.log
+.DS_Store

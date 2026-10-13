@@ -1,0 +1,1 @@
+{"dependencies":{"ws":"^8.18.0"},"description":"WonderBlocks: Build Together — multiplayer voxel sandbox","main":"wonderblocks-host.js","name":"wonderblocks","private":true,"scripts":{"start":"node wonderblocks-host.js"},"type":"module","version":"1.0.0"}
