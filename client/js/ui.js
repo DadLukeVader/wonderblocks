@@ -2,7 +2,7 @@
 import { B, BLOCKS, CATEGORIES, blockDef } from 'wb-shared/blocks.js?v=20';
 import { FOODS, foodDef } from 'wb-shared/foods.js?v=20';
 import { ITEMS, isItem, itemDef, totalDefense } from 'wb-shared/items.js?v=20';
-import { SKIN_TONES, HAIR_STYLES, HAIR_COLORS, SHIRT_COLORS, PANTS_COLORS } from './character.js?v=18';
+import { SKIN_TONES, HAIR_STYLES, HAIR_COLORS, SHIRT_COLORS, PANTS_COLORS } from './character.js?v=19';
 
 const SWATCH = {
   1: '#79c95c', 2: '#9a6a44', 3: '#b9b9c4', 4: '#f0dfa4', 5: '#8a5a32', 6: '#58b368',
@@ -74,6 +74,7 @@ export class UI {
           <div id="xpwrap"><div id="xpbar"><div id="xpfill"></div></div><span id="xplabel">Lv 1</span></div>
           <div id="biome">Wonder Village</div>
           <canvas id="compass" width="220" height="34"></canvas>
+          <canvas id="minimap" width="120" height="120" title="Minimap"></canvas>
         </div>
         <div id="quests"></div>
         <div id="toolbar">
@@ -280,7 +281,7 @@ export class UI {
   }
   setBiome(name) { el('biome').textContent = '📍 ' + name; }
   drawCompass(yaw) {
-    const cv = el('compass'); const g = cv.getContext('2d');
+    const cv = el('compass'); if (!cv) return; const g = cv.getContext('2d');
     g.clearRect(0, 0, 220, 34);
     g.fillStyle = 'rgba(255,255,255,0.75)';
     g.beginPath(); g.roundRect(0, 0, 220, 34, 17); g.fill();
@@ -297,6 +298,44 @@ export class UI {
     }
     g.fillStyle = '#e03131';
     g.beginPath(); g.moveTo(110, 4); g.lineTo(105, 12); g.lineTo(115, 12); g.fill();
+  }
+  // Minimap: top-down view of terrain around the player (called each frame)
+  drawMinimap(world, px, pz, yaw) {
+    const cv = el('minimap'); if (!cv || !world) return;
+    const g = cv.getContext('2d');
+    const S = 120, R = 30; // 30-block radius
+    g.clearRect(0, 0, S, S);
+    // Clip to circle
+    g.save();
+    g.beginPath(); g.arc(S/2, S/2, S/2, 0, Math.PI*2); g.clip();
+    const blockColor = (id) => {
+      if (id === 9) return '#3fa7e8'; // water
+      if (id === 4) return '#f0dfa4'; // sand
+      if (id === 1) return '#79c95c'; // grass
+      if (id === 3) return '#9a9aa5'; // stone
+      if (id === 6) return '#5a8a4a'; // leaves
+      if (id === 5) return '#8a5a32'; // log
+      if (id === 7) return '#f2f7ff'; // snow
+      return '#6a7a6a';
+    };
+    for (let dz = -R; dz <= R; dz++) for (let dx = -R; dx <= R; dx++) {
+      const wx = Math.floor(px + dx), wz = Math.floor(pz + dz);
+      // Find top solid block
+      let top = 2;
+      for (let y = 63; y > 0; y--) {
+        const b = world.get(wx, y, wz);
+        if (b && b !== 0) { top = b; break; }
+      }
+      g.fillStyle = blockColor(top);
+      // Rotate by yaw so up = facing direction
+      const rx = dx * Math.cos(yaw) - dz * Math.sin(yaw);
+      const rz = dx * Math.sin(yaw) + dz * Math.cos(yaw);
+      g.fillRect(S/2 + rx * (S/2/R) - 1, S/2 + rz * (S/2/R) - 1, 2, 2);
+    }
+    // Player arrow in center
+    g.fillStyle = '#fff';
+    g.beginPath(); g.moveTo(S/2, S/2 - 6); g.lineTo(S/2 - 4, S/2 + 4); g.lineTo(S/2 + 4, S/2 + 4); g.fill();
+    g.restore();
   }
   setQuests(qm) {
     el('quests').innerHTML = qm.activeQuests().map(q => {

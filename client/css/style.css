@@ -184,3 +184,5 @@ html, body { margin: 0; padding: 0; overflow: hidden; height: 100%; background: 
 .frow .mbtn { width: auto; margin: 0; padding: 8px 14px; font-size: 15px; }
 .fprog { height: 12px; background: #e8ecf4; border-radius: 6px; overflow: hidden; margin: 10px 0; }
 .fprogbar { height: 100%; background: linear-gradient(90deg, #ffb84d, #ff7d3c); border-radius: 6px; transition: width 0.5s; }
+
+#minimap { position: fixed; top: 70px; right: 12px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.7); box-shadow: 0 2px 8px rgba(0,0,0,0.3); z-index: 40; }
