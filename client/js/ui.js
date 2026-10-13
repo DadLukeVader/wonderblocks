@@ -71,7 +71,6 @@ export class UI {
           <button data-a="players" title="Players">👥</button>
           <button data-a="emotes" title="Emotes">😄</button>
           <button data-a="crafting" title="Crafting (C)">🛠️</button>
-          <button data-a="camera" title="Camera: 1st/3rd person (V)">🎥</button>
           <button data-a="claim" title="Claim land">🚩</button>
           <button data-a="mute" title="Mute (M)">🔊</button>
         </div>
@@ -200,9 +199,9 @@ export class UI {
       <div class="helptext">
       <b>🖥️ Computer:</b> WASD move · Space jump · mouse look (click to lock) ·
       <b>Left click</b> break · <b>Right click</b> place · wheel / 1–9 hotbar ·
-      E inventory · Enter chat · V or 🎥 button = first-person · Shift sprint<br><br>
+      E inventory · Enter chat · Shift sprint<br><br>
       <b>📱 Phone/tablet:</b> left joystick moves · drag to look ·
-      tap a block to target it, then JUMP / ⛏️ / 🧱 buttons · 🎥 toggles camera.<br><br>
+      tap a block to target it, then JUMP / ⛏️ / 🧱 buttons.<br><br>
       Break blocks to collect them, open 🎒 to pick materials, and build!
       Claim land with 🚩 to protect your builds. Feed wild animals their favorite snacks to tame them as pets! 🍎
       </div>

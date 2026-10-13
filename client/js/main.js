@@ -331,9 +331,9 @@ class Game {
     else if (a === 'menu') this.ui.togglePause(this.isMulti, this.myRole === ROLES.OWNER);
   }
   toggleCamera() {
+    // First-person removed per user request — third-person only.
     if (!this.player) return;
-    this.player.firstPerson = !this.player.firstPerson;
-    this.ui.toast(this.player.firstPerson ? '🎥 First-person' : '🎥 Third-person');
+    this.player.firstPerson = false;
   }
   playerList() {
     const list = [{ id: this.myId || 'me', name: this.playerName || 'Builder', role: this.myRole }];
