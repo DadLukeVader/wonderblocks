@@ -4,8 +4,8 @@
 // 5-block radius. After a 5-15s random delay a fish is caught. Switching away
 // from the rod cancels the cast. Client-side only.
 
-import { B } from 'wb-shared/blocks.js?v=22';
-import { foodDef } from 'wb-shared/foods.js?v=22';
+import { B } from 'wb-shared/blocks.js?v=23';
+import { foodDef } from 'wb-shared/foods.js?v=23';
 
 const CATCH_TABLE = [
   [0.60, 134], // raw fish

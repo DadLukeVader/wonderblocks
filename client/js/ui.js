@@ -1,8 +1,8 @@
 // WonderBlocks UI: menus, HUD, inventory, chat, tutorial, touch controls.
-import { B, BLOCKS, CATEGORIES, blockDef } from 'wb-shared/blocks.js?v=22';
-import { FOODS, foodDef } from 'wb-shared/foods.js?v=22';
-import { ITEMS, isItem, itemDef, totalDefense } from 'wb-shared/items.js?v=22';
-import { SKIN_TONES, HAIR_STYLES, HAIR_COLORS, SHIRT_COLORS, PANTS_COLORS } from './character.js?v=22';
+import { B, BLOCKS, CATEGORIES, blockDef } from 'wb-shared/blocks.js?v=23';
+import { FOODS, foodDef } from 'wb-shared/foods.js?v=23';
+import { ITEMS, isItem, itemDef, totalDefense } from 'wb-shared/items.js?v=23';
+import { SKIN_TONES, HAIR_STYLES, HAIR_COLORS, SHIRT_COLORS, PANTS_COLORS } from './character.js?v=23';
 
 const SWATCH = {
   1: '#79c95c', 2: '#9a6a44', 3: '#b9b9c4', 4: '#f0dfa4', 5: '#8a5a32', 6: '#58b368',
@@ -102,6 +102,7 @@ export class UI {
         <div id="tutorial" class="hidden"></div>
         <button id="adoptbtn" class="hidden">🐾 Adopt pet</button>
         <button id="feedbtn" class="hidden">🍎 Feed</button>
+        <button id="autotamebtn" class="hidden">🐾 Auto-Tame</button>
         <button id="pettogglebtn" class="hidden">🐾 Pets: following</button>
         <button id="ridebtn" class="hidden">🐴 Ride</button>
         <button id="breedbtn" class="hidden">💕 Breed</button>
@@ -127,6 +128,7 @@ export class UI {
     chatin.addEventListener('blur', () => { el('chat').classList.add('hidden'); });
     el('adoptbtn').addEventListener('click', () => this.h.onAdopt());
     el('feedbtn').addEventListener('click', () => this.h.onFeed());
+    el('autotamebtn').addEventListener('click', () => this.h.onAutoTame());
     el('pettogglebtn').addEventListener('click', () => this.h.onTogglePets());
     el('ridebtn').addEventListener('click', () => this.h.onRide());
     el('breedbtn').addEventListener('click', () => this.h.onBreed());
@@ -541,6 +543,12 @@ export class UI {
     this._feedT = setTimeout(() => b.classList.add('hidden'), 6000);
   }
   hideFeed() { el('feedbtn').classList.add('hidden'); clearTimeout(this._feedT); }
+  showAutoTame(label) {
+    const b = el('autotamebtn');
+    b.classList.remove('hidden');
+    b.textContent = label;
+  }
+  hideAutoTame() { el('autotamebtn').classList.add('hidden'); }
   showPetToggle(mode) {
     const b = el('pettogglebtn');
     b.classList.remove('hidden');

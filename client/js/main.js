@@ -1,26 +1,26 @@
 // WonderBlocks main: boot, game loop, building, multiplayer glue, saving.
 import * as THREE from 'three';
-import { B, blockDef, isBreakable } from 'wb-shared/blocks.js?v=22';
-import { getSpawn, getDimensionSpawn, biomeNameAt, DIM, DIM_NAMES, WORLD_Y, buildChunkData } from 'wb-shared/worldgen.js?v=22';
-import { MSG, ROLES, makeRoomCode } from 'wb-shared/protocol.js?v=22';
-import { World } from './world.js?v=22';
-import { loadAtlas } from './textures.js?v=22';
-import { loadFaces } from './character.js?v=22';
-import { Player, RemotePlayer } from './player.js?v=22';
-import { Input } from './input.js?v=22';
-import { Inventory } from './inventory.js?v=22';
-import { UI } from './ui.js?v=22';
-import { CraftingUI } from './crafting.js?v=22';
-import { FarmingSystem } from './farming.js?v=22';
-import { FishingSystem } from './fishing.js?v=22';
-import { FurnaceSystem, FurnaceUI } from './furnace.js?v=22';
-import { isItem, itemDef, toolTimeMultiplier } from 'wb-shared/items.js?v=22';
-import { CritterManager } from './animals.js?v=22';
-import { FOOD_DROPS, FOOD_VALUES, foodDef, isFood } from 'wb-shared/foods.js?v=22';
-import { ANIMAL_DEFS } from 'wb-shared/animalDefs.js?v=22';
-import { QuestManager } from './quests.js?v=22';
-import { AudioSys } from './audio.js?v=22';
-import { Net } from './net.js?v=22';
+import { B, blockDef, isBreakable } from 'wb-shared/blocks.js?v=23';
+import { getSpawn, getDimensionSpawn, biomeNameAt, DIM, DIM_NAMES, WORLD_Y, buildChunkData } from 'wb-shared/worldgen.js?v=23';
+import { MSG, ROLES, makeRoomCode } from 'wb-shared/protocol.js?v=23';
+import { World } from './world.js?v=23';
+import { loadAtlas } from './textures.js?v=23';
+import { loadFaces } from './character.js?v=23';
+import { Player, RemotePlayer } from './player.js?v=23';
+import { Input } from './input.js?v=23';
+import { Inventory } from './inventory.js?v=23';
+import { UI } from './ui.js?v=23';
+import { CraftingUI } from './crafting.js?v=23';
+import { FarmingSystem } from './farming.js?v=23';
+import { FishingSystem } from './fishing.js?v=23';
+import { FurnaceSystem, FurnaceUI } from './furnace.js?v=23';
+import { isItem, itemDef, toolTimeMultiplier } from 'wb-shared/items.js?v=23';
+import { CritterManager } from './animals.js?v=23';
+import { FOOD_DROPS, FOOD_VALUES, foodDef, isFood } from 'wb-shared/foods.js?v=23';
+import { ANIMAL_DEFS } from 'wb-shared/animalDefs.js?v=23';
+import { QuestManager } from './quests.js?v=23';
+import { AudioSys } from './audio.js?v=23';
+import { Net } from './net.js?v=23';
 
 const SAVE_KEY = 'wb_demo';
 const REACH = 6;
@@ -73,6 +73,7 @@ class Game {
       onPlayerAction: (a, id) => this.playerAction(a, id),
       onAdopt: () => this.adoptPet(),
       onFeed: () => this.feedPet(),
+      onAutoTame: () => this.autoTame(),
       onTogglePets: () => this.togglePets(),
       onRide: () => this.mountPet(),
       onBreed: () => this.breedPet(),
@@ -188,7 +189,7 @@ class Game {
     await this.critters.spawnInitial();
     // Hostile monsters (Phase 6)
     try {
-      const { MonsterManager } = await import('./monsters.js?v=22');
+      const { MonsterManager } = await import('./monsters.js?v=23');
       this.monsters = new MonsterManager(this.scene, this.world, this.player);
       this.monsters.onKill = (def) => {
         this.ui.toast(`⚔️ Defeated ${def.label}! +${def.xp} XP`);
@@ -206,7 +207,7 @@ class Game {
     } catch { /* villagers are optional */ }
     // Load item sprites for the 3D held-item display
     try {
-      const { loadItemIcons } = await import('./itemArt.js?v=22');
+      const { loadItemIcons } = await import('./itemArt.js?v=23');
       this.player.itemIconMap = await loadItemIcons();
       this.updateHeldItem();
     } catch { /* held item is decorative */ }
@@ -621,6 +622,51 @@ class Game {
       this.ui.toast(`${ANIMAL_DEFS[r.critter.kind].label} nibbles… 💛 (trust ${r.trust}/${r.need})`);
     }
   }
+  // Auto-tame: feed the animal you're looking at until it's tamed (or food runs out).
+  autoTame() {
+    const c = this._lookedCritter;
+    if (!c || c.petOf) { this.ui.toast('Look at a wild animal to auto-tame it!'); return; }
+    const def = ANIMAL_DEFS[c.kind];
+    const food = def?.favoriteFood;
+    if (!food) return;
+    let feeds = 0, r = null;
+    while (this.inv.count(food) > 0 && feeds < 20) {
+      r = this.critters.feed(c, this.inv);
+      feeds++;
+      if (!r.ok || r.tamed) break;
+    }
+    if (r?.tamed) {
+      this.audio.quest();
+      this.ui.toast(`🐾 ${c.name} is tamed! They'll follow you now.`);
+    } else if (r?.ok) {
+      this.ui.toast(`Fed ${c.name} ${feeds}x — needs ${def.feedsToTame - (c.trust || 0)} more ${foodDef(food)?.name || 'food'}.`);
+    } else {
+      const f = foodDef(food);
+      this.ui.toast(`Out of ${f?.icon || '🍎'} ${f?.name || 'food'}! ${f?.desc || ''}`);
+    }
+    this.ui.hideAutoTame();
+  }
+  // Per-frame (throttled): check if player is looking at a tameable animal → show auto-tame button.
+  updateLookTarget() {
+    if (!this.critters || !this.camera) return;
+    const camPos = this.camera.position;
+    const camDir = new THREE.Vector3();
+    this.camera.getWorldDirection(camDir);
+    const c = this.critters.critterAtLook(camPos, camDir);
+    if (c && !c.petOf) {
+      this._lookedCritter = c;
+      const def = ANIMAL_DEFS[c.kind];
+      const food = def?.favoriteFood;
+      const hasFood = food && this.inv.count(food) > 0;
+      const label = hasFood
+        ? `🐾 Auto-Tame ${def.label}`
+        : `🐾 ${def.label} (needs ${foodDef(food)?.name || 'food'})`;
+      this.ui.showAutoTame(label);
+    } else {
+      this._lookedCritter = null;
+      this.ui.hideAutoTame();
+    }
+  }
   togglePets() {
     const pets = this.critters.myPets();
     if (!pets.length) return;
@@ -1018,6 +1064,9 @@ class Game {
       const f = foodDef(favFood);
       this.ui.showFeed(`${f.icon} Feed ${ANIMAL_DEFS[tameable.kind].label}`);
     } else this.ui.hideFeed();
+    // auto-tame: show button when looking directly at a wild animal (throttled 4x/sec)
+    this._lookTick = (this._lookTick || 0) + dt;
+    if (this._lookTick > 0.25) { this._lookTick = 0; this.updateLookTarget(); }
     // legacy instant-adopt: only when the player has no favorite food on hand (no double buttons)
     const adoptable = this.critters.nearestAdoptable(this.player.pos);
     const myPetCount = this.critters.myPets().length;

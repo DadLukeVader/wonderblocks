@@ -10,11 +10,11 @@
 // (threshold model — see shared/animalDefs.js). Tamed pets follow you; the
 // stay/follow toggle (setPetsMode) parks them in place.
 import * as THREE from 'three';
-import { B } from 'wb-shared/blocks.js?v=22';
-import { biomeNameAt, getSpawn } from 'wb-shared/worldgen.js?v=22';
-import { ANIMAL_DEFS, petName } from 'wb-shared/animalDefs.js?v=22';
-import { foodDef } from 'wb-shared/foods.js?v=22';
-import { loadAnimalTextures } from './animalArt.js?v=22';
+import { B } from 'wb-shared/blocks.js?v=23';
+import { biomeNameAt, getSpawn } from 'wb-shared/worldgen.js?v=23';
+import { ANIMAL_DEFS, petName } from 'wb-shared/animalDefs.js?v=23';
+import { foodDef } from 'wb-shared/foods.js?v=23';
+import { loadAnimalTextures } from './animalArt.js?v=23';
 
 // One box part. tex (optional) replaces the flat color — used for the body.
 function part(w, h, d, color, x = 0, y = 0, z = 0, tex = null) {
@@ -572,6 +572,23 @@ export class CritterManager {
       if (c.petOf) continue;
       const d = Math.hypot(c.g.position.x - pos.x, c.g.position.z - pos.z);
       if (d < bd) { bd = d; best = c; }
+    }
+    return best;
+  }
+
+  // Critter the camera is looking at (ray vs critter centers, within 6 blocks).
+  // Returns the critter or null. Used for the auto-tame button.
+  critterAtLook(camPos, camDir, maxD = 6) {
+    let best = null, bd = maxD;
+    for (const c of this.critters) {
+      const p = c.g.position;
+      const dx = p.x - camPos.x, dy = (p.y + 0.5) - camPos.y, dz = p.z - camPos.z;
+      const along = dx * camDir.x + dy * camDir.y + dz * camDir.z;
+      if (along < 0 || along > maxD) continue;
+      // Perpendicular distance from ray
+      const px = dx - along * camDir.x, py = dy - along * camDir.y, pz = dz - along * camDir.z;
+      const perp = Math.hypot(px, py, pz);
+      if (perp < 0.8 && along < bd) { bd = along; best = c; }
     }
     return best;
   }
