@@ -2,7 +2,7 @@
 import { B, BLOCKS, CATEGORIES, blockDef } from 'wb-shared/blocks.js?v=20';
 import { FOODS, foodDef } from 'wb-shared/foods.js?v=20';
 import { ITEMS, isItem, itemDef, totalDefense } from 'wb-shared/items.js?v=20';
-import { SKIN_TONES, HAIR_STYLES, HAIR_COLORS, SHIRT_COLORS, PANTS_COLORS } from './character.js?v=19';
+import { SKIN_TONES, HAIR_STYLES, HAIR_COLORS, SHIRT_COLORS, PANTS_COLORS } from './character.js?v=20';
 
 const SWATCH = {
   1: '#79c95c', 2: '#9a6a44', 3: '#b9b9c4', 4: '#f0dfa4', 5: '#8a5a32', 6: '#58b368',
@@ -299,11 +299,11 @@ export class UI {
     g.fillStyle = '#e03131';
     g.beginPath(); g.moveTo(110, 4); g.lineTo(105, 12); g.lineTo(115, 12); g.fill();
   }
-  // Minimap: top-down view of terrain around the player (called each frame)
+  // Minimap: top-down view of terrain around the player (called 2x/sec)
   drawMinimap(world, px, pz, yaw) {
     const cv = el('minimap'); if (!cv || !world) return;
     const g = cv.getContext('2d');
-    const S = 120, R = 30; // 30-block radius
+    const S = 120, R = 20; // 20-block radius (smaller = faster)
     g.clearRect(0, 0, S, S);
     // Clip to circle
     g.save();
@@ -318,19 +318,21 @@ export class UI {
       if (id === 7) return '#f2f7ff'; // snow
       return '#6a7a6a';
     };
-    for (let dz = -R; dz <= R; dz++) for (let dx = -R; dx <= R; dx++) {
+    const step = 2; // sample every 2nd block (4x fewer lookups)
+    for (let dz = -R; dz <= R; dz += step) for (let dx = -R; dx <= R; dx += step) {
       const wx = Math.floor(px + dx), wz = Math.floor(pz + dz);
-      // Find top solid block
+      // Sample at player's Y level ±10 instead of full column scan
+      const py = Math.floor(world.playerY || 35);
       let top = 2;
-      for (let y = 63; y > 0; y--) {
+      for (let y = py + 10; y > py - 10; y--) {
         const b = world.get(wx, y, wz);
         if (b && b !== 0) { top = b; break; }
       }
       g.fillStyle = blockColor(top);
-      // Rotate by yaw so up = facing direction
       const rx = dx * Math.cos(yaw) - dz * Math.sin(yaw);
       const rz = dx * Math.sin(yaw) + dz * Math.cos(yaw);
-      g.fillRect(S/2 + rx * (S/2/R) - 1, S/2 + rz * (S/2/R) - 1, 2, 2);
+      const ps = (S / R) * step;
+      g.fillRect(S/2 + rx * (S/2/R) - ps/2, S/2 + rz * (S/2/R) - ps/2, ps, ps);
     }
     // Player arrow in center
     g.fillStyle = '#fff';

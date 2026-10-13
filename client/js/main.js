@@ -3,24 +3,24 @@ import * as THREE from 'three';
 import { B, blockDef, isBreakable } from 'wb-shared/blocks.js?v=20';
 import { getSpawn, getDimensionSpawn, biomeNameAt, DIM, DIM_NAMES, WORLD_Y, buildChunkData } from 'wb-shared/worldgen.js?v=20';
 import { MSG, ROLES, makeRoomCode } from 'wb-shared/protocol.js?v=20';
-import { World } from './world.js?v=19';
-import { loadAtlas } from './textures.js?v=19';
-import { loadFaces } from './character.js?v=19';
-import { Player, RemotePlayer } from './player.js?v=19';
-import { Input } from './input.js?v=19';
-import { Inventory } from './inventory.js?v=19';
-import { UI } from './ui.js?v=19';
-import { CraftingUI } from './crafting.js?v=19';
+import { World } from './world.js?v=20';
+import { loadAtlas } from './textures.js?v=20';
+import { loadFaces } from './character.js?v=20';
+import { Player, RemotePlayer } from './player.js?v=20';
+import { Input } from './input.js?v=20';
+import { Inventory } from './inventory.js?v=20';
+import { UI } from './ui.js?v=20';
+import { CraftingUI } from './crafting.js?v=20';
 import { FarmingSystem } from './farming.js?v=20';
 import { FishingSystem } from './fishing.js?v=20';
 import { FurnaceSystem, FurnaceUI } from './furnace.js?v=20';
 import { isItem, itemDef, toolTimeMultiplier } from 'wb-shared/items.js?v=20';
-import { CritterManager } from './animals.js?v=19';
+import { CritterManager } from './animals.js?v=20';
 import { FOOD_DROPS, FOOD_VALUES, foodDef, isFood } from 'wb-shared/foods.js?v=20';
-import { ANIMAL_DEFS } from 'wb-shared/animalDefs.js?v=19';
-import { QuestManager } from './quests.js?v=19';
-import { AudioSys } from './audio.js?v=19';
-import { Net } from './net.js?v=19';
+import { ANIMAL_DEFS } from 'wb-shared/animalDefs.js?v=20';
+import { QuestManager } from './quests.js?v=20';
+import { AudioSys } from './audio.js?v=20';
+import { Net } from './net.js?v=20';
 
 const SAVE_KEY = 'wb_demo';
 const REACH = 6;
@@ -188,7 +188,7 @@ class Game {
     await this.critters.spawnInitial();
     // Hostile monsters (Phase 6)
     try {
-      const { MonsterManager } = await import('./monsters.js?v=19');
+      const { MonsterManager } = await import('./monsters.js?v=20');
       this.monsters = new MonsterManager(this.scene, this.world, this.player);
       this.monsters.onKill = (def) => {
         this.ui.toast(`⚔️ Defeated ${def.label}! +${def.xp} XP`);
@@ -206,7 +206,7 @@ class Game {
     } catch { /* villagers are optional */ }
     // Load item sprites for the 3D held-item display
     try {
-      const { loadItemIcons } = await import('./itemArt.js?v=19');
+      const { loadItemIcons } = await import('./itemArt.js?v=20');
       this.player.itemIconMap = await loadItemIcons();
       this.updateHeldItem();
     } catch { /* held item is decorative */ }
@@ -977,6 +977,7 @@ class Game {
     if (this.started) this.updateTargeting(dt);
     this.world.setTime(now / 1000); // water animation clock (uTime + texture frames)
     this.world.update(this.player.pos.x, this.player.pos.z);
+    this.world.playerY = this.player.pos.y; // for minimap height sampling
     this.critters.update(dt, this.player.pos);
     if (this.farming) this.farming.update(dt);
     if (this.fishing) this.fishing.update(dt);
@@ -1056,7 +1057,12 @@ class Game {
 
     // HUD
     this.ui.drawCompass(this.player.yaw);
-    this.ui.drawMinimap(this.world, this.player.pos.x, this.player.pos.z, this.player.yaw);
+    // Minimap throttled to 2x/sec — full rescan every frame was a perf killer
+    this._mmTick = (this._mmTick || 0) + dt;
+    if (this._mmTick > 0.5) {
+      this._mmTick = 0;
+      this.ui.drawMinimap(this.world, this.player.pos.x, this.player.pos.z, this.player.yaw);
+    }
     // Phase 8: in other dimensions the location label shows the realm name.
     const dimLabel = this.dimension === DIM.OVERWORLD
       ? biomeNameAt(Math.floor(this.player.pos.x), Math.floor(this.player.pos.z))
