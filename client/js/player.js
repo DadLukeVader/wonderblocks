@@ -18,7 +18,7 @@ export class Player {
     this.pos = new THREE.Vector3(spawn[0], spawn[1], spawn[2]);
     this.vel = new THREE.Vector3();
     this.yaw = Math.PI * 0.9;
-    this.pitch = -0.32;
+    this.pitch = 0.35;
     this.dist = 6;
     this.onGround = false;
     this.inWater = false;
