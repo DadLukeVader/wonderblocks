@@ -1,23 +1,23 @@
 // WonderBlocks main: boot, game loop, building, multiplayer glue, saving.
 import * as THREE from 'three';
-import { B, blockDef, isBreakable } from 'wb-shared/blocks.js?v=17';
-import { getSpawn, biomeNameAt } from 'wb-shared/worldgen.js?v=17';
-import { MSG, ROLES, makeRoomCode } from 'wb-shared/protocol.js?v=17';
-import { World } from './world.js?v=17';
-import { loadAtlas } from './textures.js?v=17';
-import { loadFaces } from './character.js?v=17';
-import { Player, RemotePlayer } from './player.js?v=17';
-import { Input } from './input.js?v=17';
-import { Inventory } from './inventory.js?v=17';
-import { UI } from './ui.js?v=17';
-import { CraftingUI } from './crafting.js?v=17';
-import { isItem, itemDef, toolTimeMultiplier } from 'wb-shared/items.js?v=17';
-import { CritterManager } from './animals.js?v=17';
-import { FOOD_DROPS, foodDef, isFood } from 'wb-shared/foods.js?v=17';
-import { ANIMAL_DEFS } from 'wb-shared/animalDefs.js?v=17';
-import { QuestManager } from './quests.js?v=17';
-import { AudioSys } from './audio.js?v=17';
-import { Net } from './net.js?v=17';
+import { B, blockDef, isBreakable } from 'wb-shared/blocks.js?v=18';
+import { getSpawn, biomeNameAt } from 'wb-shared/worldgen.js?v=18';
+import { MSG, ROLES, makeRoomCode } from 'wb-shared/protocol.js?v=18';
+import { World } from './world.js?v=18';
+import { loadAtlas } from './textures.js?v=18';
+import { loadFaces } from './character.js?v=18';
+import { Player, RemotePlayer } from './player.js?v=18';
+import { Input } from './input.js?v=18';
+import { Inventory } from './inventory.js?v=18';
+import { UI } from './ui.js?v=18';
+import { CraftingUI } from './crafting.js?v=18';
+import { isItem, itemDef, toolTimeMultiplier } from 'wb-shared/items.js?v=18';
+import { CritterManager } from './animals.js?v=18';
+import { FOOD_DROPS, foodDef, isFood } from 'wb-shared/foods.js?v=18';
+import { ANIMAL_DEFS } from 'wb-shared/animalDefs.js?v=18';
+import { QuestManager } from './quests.js?v=18';
+import { AudioSys } from './audio.js?v=18';
+import { Net } from './net.js?v=18';
 
 const SAVE_KEY = 'wb_demo';
 const REACH = 6;
@@ -170,9 +170,18 @@ class Game {
     }
     this.critters = new CritterManager(this.scene, this.world);
     await this.critters.spawnInitial();
+    // Hostile monsters (Phase 6)
+    try {
+      const { MonsterManager } = await import('./monsters.js?v=18');
+      this.monsters = new MonsterManager(this.scene, this.world, this.player);
+      this.monsters.onKill = (def) => {
+        this.ui.toast(`⚔️ Defeated ${def.label}! +${def.xp} XP`);
+        this.audio.pickup();
+      };
+    } catch { /* monsters are optional */ }
     // Load item sprites for the 3D held-item display
     try {
-      const { loadItemIcons } = await import('./itemArt.js?v=17');
+      const { loadItemIcons } = await import('./itemArt.js?v=18');
       this.player.itemIconMap = await loadItemIcons();
       this.updateHeldItem();
     } catch { /* held item is decorative */ }
@@ -528,6 +537,27 @@ class Game {
 
     // breaking (hold)
     const breaking = this.input.breakHeld || this.input.consumeBreakEdge();
+    // Phase 6: attack monsters first (if a weapon/tool is wielded and monster is in range)
+    if (breaking && this.monsters && this.monsters.monsters.length) {
+      const sel = this.inv.selectedItem();
+      const idef = sel ? itemDef(sel) : null;
+      if (idef && (idef.kind === 'weapon' || idef.kind === 'tool')) {
+        // Find nearest monster within 3 blocks in front of player
+        const px = this.player.pos.x, pz = this.player.pos.z;
+        let best = null, bestD = 3.5;
+        for (const m of this.monsters.monsters) {
+          const d = Math.hypot(m.pos.x - px, m.pos.z - pz);
+          if (d < bestD) { best = m; bestD = d; }
+        }
+        if (best) {
+          this.player.swing();
+          const dmg = idef.damage || 3;
+          this.monsters.hitMonster(best, dmg);
+          this.audio.breakB();
+          return; // don't also break blocks
+        }
+      }
+    }
     if (breaking && hit && isBreakable(hit.id)) {
       const key = hit.x + ',' + hit.y + ',' + hit.z;
       if (!this.breakState || this.breakState.key !== key) this.breakState = { key, t: 0 };
@@ -633,6 +663,10 @@ class Game {
     this.world.setTime(now / 1000); // water animation clock (uTime + texture frames)
     this.world.update(this.player.pos.x, this.player.pos.z);
     this.critters.update(dt, this.player.pos);
+    if (this.monsters) {
+      const isNight = this.world.isNight ? this.world.isNight() : false;
+      this.monsters.update(dt, isNight, (x, z) => this.world.biomeAt ? this.world.biomeAt(x, z) : 'forest');
+    }
     for (const [, r] of this.remotes) r.update(dt);
 
     // animated atlas frames (water shimmer, glow pulse, crystal sparkle)
