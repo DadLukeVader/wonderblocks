@@ -1,23 +1,23 @@
 // WonderBlocks main: boot, game loop, building, multiplayer glue, saving.
 import * as THREE from 'three';
-import { B, blockDef, isBreakable } from 'wb-shared/blocks.js?v=15';
-import { getSpawn, biomeNameAt } from 'wb-shared/worldgen.js?v=15';
-import { MSG, ROLES, makeRoomCode } from 'wb-shared/protocol.js?v=15';
-import { World } from './world.js?v=15';
-import { loadAtlas } from './textures.js?v=15';
-import { loadFaces } from './character.js?v=15';
-import { Player, RemotePlayer } from './player.js?v=15';
-import { Input } from './input.js?v=15';
-import { Inventory } from './inventory.js?v=15';
-import { UI } from './ui.js?v=15';
-import { CraftingUI } from './crafting.js?v=15';
-import { isItem, itemDef, toolTimeMultiplier } from 'wb-shared/items.js?v=15';
-import { CritterManager } from './animals.js?v=15';
-import { FOOD_DROPS, foodDef, isFood } from 'wb-shared/foods.js?v=15';
-import { ANIMAL_DEFS } from 'wb-shared/animalDefs.js?v=15';
-import { QuestManager } from './quests.js?v=15';
-import { AudioSys } from './audio.js?v=15';
-import { Net } from './net.js?v=15';
+import { B, blockDef, isBreakable } from 'wb-shared/blocks.js?v=17';
+import { getSpawn, biomeNameAt } from 'wb-shared/worldgen.js?v=17';
+import { MSG, ROLES, makeRoomCode } from 'wb-shared/protocol.js?v=17';
+import { World } from './world.js?v=17';
+import { loadAtlas } from './textures.js?v=17';
+import { loadFaces } from './character.js?v=17';
+import { Player, RemotePlayer } from './player.js?v=17';
+import { Input } from './input.js?v=17';
+import { Inventory } from './inventory.js?v=17';
+import { UI } from './ui.js?v=17';
+import { CraftingUI } from './crafting.js?v=17';
+import { isItem, itemDef, toolTimeMultiplier } from 'wb-shared/items.js?v=17';
+import { CritterManager } from './animals.js?v=17';
+import { FOOD_DROPS, foodDef, isFood } from 'wb-shared/foods.js?v=17';
+import { ANIMAL_DEFS } from 'wb-shared/animalDefs.js?v=17';
+import { QuestManager } from './quests.js?v=17';
+import { AudioSys } from './audio.js?v=17';
+import { Net } from './net.js?v=17';
 
 const SAVE_KEY = 'wb_demo';
 const REACH = 6;
@@ -138,6 +138,18 @@ class Game {
     await this.world.bootAround(spawnPos[0], spawnPos[2], p => this.ui.loading(0.05 + p * 0.85, 'Growing the world… 🌱'));
     const faceTex = this.faceTexs ? this.faceTexs[(Math.random() * this.faceTexs.length) | 0] : null;
     this.player = new Player(this.scene, this.world, this.ui.char, spawnPos, faceTex);
+    // Survival callbacks
+    const vitals = () => this.ui.renderVitals(this.player.health, this.player.maxHealth, this.player.hunger, this.player.maxHunger);
+    this.player.onDamage = (amt, cause) => { vitals(); this.audio.hurt?.(); };
+    this.player.onHeal = () => vitals();
+    this.player.onHunger = () => vitals();
+    this.player.onEat = () => vitals();
+    this.player.onDeath = (cause) => {
+      const msgs = { fall: 'took a long fall', starve: 'starved', mob: 'was defeated', drown: 'drowned' };
+      this.ui.toast(`💀 You ${msgs[cause] || 'died'}! Respawning…`);
+      setTimeout(() => { this.player.revive(); this.respawn(); vitals(); }, 2000);
+    };
+    vitals();
     // Failsafe: stale/corrupt saves can place the player inside solid terrain,
     // at invalid coords, or trapped under a structure (camera collapses into
     // the character). Lift to open air, ensure open sky above, or reset to spawn.
@@ -160,7 +172,7 @@ class Game {
     await this.critters.spawnInitial();
     // Load item sprites for the 3D held-item display
     try {
-      const { loadItemIcons } = await import('./itemArt.js?v=15');
+      const { loadItemIcons } = await import('./itemArt.js?v=17');
       this.player.itemIconMap = await loadItemIcons();
       this.updateHeldItem();
     } catch { /* held item is decorative */ }

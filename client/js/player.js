@@ -1,7 +1,7 @@
 // WonderBlocks player: AABB voxel physics, swimming, third-person orbit camera.
 import * as THREE from 'three';
-import { B, isSolid } from 'wb-shared/blocks.js?v=15';
-import { buildCharacter, animateCharacter } from './character.js?v=15';
+import { B, isSolid } from 'wb-shared/blocks.js?v=17';
+import { buildCharacter, animateCharacter } from './character.js?v=17';
 
 const PW = 0.3, PH = 1.8, EYE = 1.62;
 
@@ -120,8 +120,6 @@ export class Player {
       this.vel.y -= 28 * dt;
       // Track fall speed for damage calculation
       if (!this.onGround && this.vel.y < this._fallPeak) this._fallPeak = this.vel.y;
-    } else {
-      this.vel.y -= 26 * dt;
       if (this.vel.y < -30) this.vel.y = -30;
       if (mv.jump && this.onGround) { this.vel.y = 8.8; this.onGround = false; }
     }
