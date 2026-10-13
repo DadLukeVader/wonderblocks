@@ -32,6 +32,7 @@ export class Input {
       if (e.code === 'Enter' && this.onAction.chat) this.onAction.chat();
       if (e.code === 'Escape' && this.onAction.menu) this.onAction.menu();
       if (e.code === 'KeyV' && this.onAction.firstperson) this.onAction.firstperson();
+      if (e.code === 'KeyC' && this.onAction.crafting) this.onAction.crafting();
       if (e.code === 'KeyM' && this.onAction.mute) this.onAction.mute();
     });
     window.addEventListener('keyup', e => {

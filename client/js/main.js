@@ -10,7 +10,11 @@ import { Player, RemotePlayer } from './player.js';
 import { Input } from './input.js';
 import { Inventory } from './inventory.js';
 import { UI } from './ui.js';
+import { CraftingUI } from './crafting.js';
+import { isItem, itemDef, toolTimeMultiplier } from 'wb-shared/items.js';
 import { CritterManager } from './animals.js';
+import { FOOD_DROPS, foodDef, isFood } from 'wb-shared/foods.js';
+import { ANIMAL_DEFS } from 'wb-shared/animalDefs.js';
 import { QuestManager } from './quests.js';
 import { AudioSys } from './audio.js';
 import { Net } from './net.js';
@@ -61,6 +65,8 @@ class Game {
       onEmote: e => this.doEmote(e),
       onPlayerAction: (a, id) => this.playerAction(a, id),
       onAdopt: () => this.adoptPet(),
+      onFeed: () => this.feedPet(),
+      onTogglePets: () => this.togglePets(),
       onToggleUnlimited: v => { this.inv.unlimited = v; this.ui.renderHotbar(this.inv); },
       onVolume: v => { this.settings.volume = v; this.audio.volume = v; if (this.audio.master) this.audio.master.gain.value = this.audio.muted ? 0 : v; },
     });
@@ -68,11 +74,20 @@ class Game {
     this.ui.h.unlimited = false;
     this.ui.h.volume = this.settings.volume;
 
+    // crafting panel (C key / 🛠️ toolbar button)
+    this.crafting = new CraftingUI({
+      onToast: m => this.ui.toast(m),
+      playSound: () => { this.audio.ensure(); this.audio.pop(); },
+      onCrafted: itemId => { if (this.isMulti) this.net.send({ t: MSG.CRAFT, recipe: itemId }); },
+      isWorkbenchNearby: () => this.nearWorkbench(),
+    });
+
     // input action callbacks
     this.input.onAction.inventory = () => { this.audio.ensure(); this.ui.toggleInventory(this.inv); this.unlockPointer(); };
+    this.input.onAction.crafting = () => { this.audio.ensure(); this.crafting.toggle(this.inv); this.unlockPointer(); };
     this.input.onAction.chat = () => this.ui.toggleChat();
     this.input.onAction.menu = () => { if (this.started) this.ui.togglePause(this.isMulti, this.myRole === ROLES.OWNER); };
-    this.input.onAction.firstperson = () => { if (this.player) this.player.firstPerson = !this.player.firstPerson; };
+    this.input.onAction.firstperson = () => { this.audio.ensure(); this.audio.click(); this.toggleCamera(); };
     this.input.onAction.mute = () => this.toggleMute();
 
     this.quests.onUpdate = () => this.ui.setQuests(this.quests);
@@ -122,7 +137,7 @@ class Game {
     const faceTex = this.faceTexs ? this.faceTexs[(Math.random() * this.faceTexs.length) | 0] : null;
     this.player = new Player(this.scene, this.world, this.ui.char, spawnPos, faceTex);
     this.critters = new CritterManager(this.scene, this.world);
-    this.critters.spawnInitial();
+    await this.critters.spawnInitial();
     // highlight + ghost preview
     this.highlight = new THREE.LineSegments(
       new THREE.EdgesGeometry(new THREE.BoxGeometry(1.002, 1.002, 1.002)),
@@ -157,7 +172,7 @@ class Game {
     if (save?.edits) for (const [x, y, z, b] of save.edits) this.world.set(x, y, z, b);
     this.ui.chatAdd('', `Welcome back to WonderBlocks, ${name}! 🌱`, false, true);
     if (!save?.tutorialDone) this.startTutorial();
-    if (save?.pet) this.restorePet(save.pet);
+    if (save?.pet || save?.pets) this.restorePet(save);
   }
 
   async startMulti(name, code) {
@@ -199,6 +214,11 @@ class Game {
     });
     net.on(MSG.EDIT, m => { this.world.set(m.x, m.y, m.z, m.b); });
     net.on(MSG.CHAT, m => this.ui.chatAdd(m.name, m.text, m.from === this.myId));
+    net.on(MSG.CRAFT, m => {
+      if (m.by === this.myId) return; // we already toasted our own craft locally
+      const idef = itemDef(m.item);
+      this.ui.toast(`🔨 ${m.name || 'Someone'} crafted ${idef ? idef.name : 'something'}`);
+    });
     net.on(MSG.EMOTE, m => { const r = this.remotes.get(m.id); if (r) r.mode = m.e; });
     net.on(MSG.ROLE, m => {
       this.myRole = m.roles[this.myId] || ROLES.BUILDER;
@@ -266,7 +286,8 @@ class Game {
         inv: this.inv.serialize(),
         quests: this.quests.serialize(),
         tutorialDone: this.tutorialDoneFlag,
-        pet: this.pet ? { kind: this.pet.kind, name: this.pet.name } : null,
+        pet: this.pet ? { kind: this.pet.kind, name: this.pet.name } : null, // legacy (read path only)
+        pets: this.critters ? this.critters.myPets().map(c => ({ kind: c.kind, name: c.name })) : [],
       }));
     } catch { /* noop */ }
   }
@@ -278,9 +299,16 @@ class Game {
     else if (a === 'chat') this.ui.toggleChat();
     else if (a === 'players') this.ui.togglePlayers(this.playerList(), this.myId || 'me', this.myRole === ROLES.OWNER);
     else if (a === 'emotes') document.getElementById('emotebar').classList.toggle('hidden');
+    else if (a === 'crafting') { this.crafting.toggle(this.inv); this.unlockPointer(); }
     else if (a === 'claim') this.claimLand();
     else if (a === 'mute') this.toggleMute();
+    else if (a === 'camera') this.toggleCamera();
     else if (a === 'menu') this.ui.togglePause(this.isMulti, this.myRole === ROLES.OWNER);
+  }
+  toggleCamera() {
+    if (!this.player) return;
+    this.player.firstPerson = !this.player.firstPerson;
+    this.ui.toast(this.player.firstPerson ? '🎥 First-person' : '🎥 Third-person');
   }
   playerList() {
     const list = [{ id: this.myId || 'me', name: this.playerName || 'Builder', role: this.myRole }];
@@ -307,6 +335,15 @@ class Game {
     const p = this.player.pos;
     this.net.send({ t: MSG.CLAIM, x: Math.floor(p.x), z: Math.floor(p.z) });
   }
+  // true when a workbench block is within 8 blocks of the player (unlocks gold/crystal recipes)
+  nearWorkbench() {
+    if (!this.world || !this.player) return true; // menu contexts stay permissive
+    const px = Math.floor(this.player.pos.x), py = Math.floor(this.player.pos.y), pz = Math.floor(this.player.pos.z);
+    for (let dx = -8; dx <= 8; dx++) for (let dy = -4; dy <= 4; dy++) for (let dz = -8; dz <= 8; dz++) {
+      if (this.world.get(px + dx, py + dy, pz + dz) === B.WORKBENCH) return true;
+    }
+    return false;
+  }
   adoptPet() {
     const c = this.critters.nearestAdoptable(this.player.pos);
     if (!c) return;
@@ -317,9 +354,43 @@ class Game {
     this.ui.toast(`🐾 You adopted ${c.name}! They'll follow you everywhere.`);
     this.audio.quest();
   }
+  feedPet() {
+    const c = this.critters.nearestTameable(this.player.pos);
+    if (!c) return;
+    const r = this.critters.feed(c, this.inv);
+    if (!r.ok) {
+      const f = r.food;
+      this.ui.toast(`You need ${f?.icon || '🍎'} ${f?.name || 'food'}! ${f?.desc || ''}`);
+      return;
+    }
+    this.audio.pop();
+    this.ui.hideFeed();
+    if (r.tamed) {
+      this.audio.quest();
+      this.ui.toast(`💕 ${r.critter.name} the ${r.critter.kind} is tamed! They'll follow you.`);
+      this.ui.chatAdd('', `💕 You tamed ${r.critter.name} the ${r.critter.kind}!`, false, true);
+    } else {
+      this.ui.toast(`${ANIMAL_DEFS[r.critter.kind].label} nibbles… 💛 (trust ${r.trust}/${r.need})`);
+    }
+  }
+  togglePets() {
+    const pets = this.critters.myPets();
+    if (!pets.length) return;
+    const to = pets[0].mode === 'follow' ? 'stay' : 'follow';
+    this.critters.setPetsMode(to);
+    this.audio.click();
+    this.ui.toast(to === 'stay' ? '🐾 Pets are staying put.' : '🐾 Pets are following you!');
+  }
   restorePet(saved) {
-    const c = this.critters.nearestAdoptable(this.player.pos);
-    if (c && c.kind === saved.kind) { c.petOf = 'me'; c.name = saved.name; this.pet = c; }
+    // accepts legacy {kind,name}, {pets:[...]}, or an array — restores via the manager
+    const list = saved?.pets || (Array.isArray(saved) ? saved : (saved ? [saved] : []));
+    let first = null;
+    for (const s of list) {
+      if (!s || !ANIMAL_DEFS[s.kind]) continue;
+      const c = this.critters.tameByKind(s.kind, s.name);
+      if (c && !first) first = c;
+    }
+    if (first) this.pet = first; // legacy single-pet pointer (adopt button compat)
   }
 
   // ---------------- tutorial ----------------
@@ -408,7 +479,7 @@ class Game {
       const key = hit.x + ',' + hit.y + ',' + hit.z;
       if (!this.breakState || this.breakState.key !== key) this.breakState = { key, t: 0 };
       this.breakState.t += dt;
-      const need = blockDef(hit.id).hardness;
+      const need = blockDef(hit.id).hardness * toolTimeMultiplier(this.inv.selectedItem(), hit.id);
       this.ui.setTargetLabel(`${blockDef(hit.id).name}… ${Math.min(99, Math.round(this.breakState.t / need * 100))}%`);
       if (this.breakState.t >= need) {
         this.breakBlock(hit.x, hit.y, hit.z, hit.id);
@@ -430,6 +501,14 @@ class Game {
     this.applyEdit(x, y, z, B.AIR);
     const drop = def.drop ?? id;
     this.inv.add(drop);
+    // food bonus drops (animals subsystem)
+    for (const r of (FOOD_DROPS[id] || [])) {
+      if (Math.random() < r.chance) {
+        this.inv.add(r.food, r.n);
+        const f = foodDef(r.food);
+        if (f) { this.ui.toast(`${f.icon} +${r.n} ${f.name}!`); this.audio.pickup(); }
+      }
+    }
     this.audio.breakB();
     this.quests.handle('break', id);
     this.tutEvent('break');
@@ -438,27 +517,32 @@ class Game {
 
   tryPlace(hit) {
     const sel = this.inv.selectedBlock();
+    if (isFood(sel)) { this.ui.toast("That's food — feed it to a wild animal instead! 🍎"); return; }
+    // Craftable utilities (torch/workbench) are items that resolve to a real block.
+    const selItem = isItem(sel) ? itemDef(sel) : null;
+    const placeId = selItem ? (selItem.placesBlock || null) : sel;
+    if (placeId == null) return; // wielding a non-placeable item (sword, armor...): nothing to place
     const px = hit.x + hit.nx, py = hit.y + hit.ny, pz = hit.z + hit.nz;
     const existing = this.world.get(px, py, pz);
     if (existing !== B.AIR && existing !== B.WATER) return;
     if (py < 1 || py > 62) return;
-    if (!this.inv.canPlace(sel)) { this.ui.toast('Out of blocks! Break some or pick another in 🎒.'); return; }
+    if (!this.inv.canPlace(placeId)) { this.ui.toast('Out of blocks! Break some or pick another in 🎒.'); return; }
     // don't place solid blocks inside the player
-    const def = blockDef(sel);
+    const def = blockDef(placeId);
     if (def.solid) {
       const p = this.player.pos;
       if (px + 1 > p.x - 0.3 && px < p.x + 0.3 && pz + 1 > p.z - 0.3 && pz < p.z + 0.3 && py + 1 > p.y && py < p.y + 1.8) {
         this.ui.toast('Too close to place there!'); return;
       }
     }
-    this.inv.remove(sel);
-    this.applyEdit(px, py, pz, sel);
+    this.inv.remove(placeId);
+    this.applyEdit(px, py, pz, placeId);
     this.audio.pop();
-    this.quests.handle('place', sel);
-    this.quests.handle('house', sel);
-    if ([B.FLOWER_RED, B.FLOWER_YELLOW, B.FLOWER_BLUE].includes(sel)) this.quests.handle('plant', sel);
+    this.quests.handle('place', placeId);
+    this.quests.handle('house', placeId);
+    if ([B.FLOWER_RED, B.FLOWER_YELLOW, B.FLOWER_BLUE].includes(placeId)) this.quests.handle('plant', placeId);
     this.tutEvent('place');
-    if (sel === B.CLAIM_FLAG && this.isMulti) this.claimLand();
+    if (placeId === B.CLAIM_FLAG && this.isMulti) this.claimLand();
   }
 
   // ---------------- main loop ----------------
@@ -506,9 +590,22 @@ class Game {
     // depth quest
     if (this.player.pos.y < 14) this.quests.handle('depth');
 
-    // adopt prompt
+    // feed-to-tame prompt (animals subsystem)
+    const tameable = this.critters.nearestTameable(this.player.pos);
+    const favFood = tameable ? ANIMAL_DEFS[tameable.kind].favoriteFood : null;
+    const hasFood = favFood != null && this.inv.count(favFood) > 0;
+    if (tameable && hasFood) {
+      const f = foodDef(favFood);
+      this.ui.showFeed(`${f.icon} Feed ${ANIMAL_DEFS[tameable.kind].label}`);
+    } else this.ui.hideFeed();
+    // legacy instant-adopt: only when the player has no favorite food on hand (no double buttons)
     const adoptable = this.critters.nearestAdoptable(this.player.pos);
-    if (adoptable && !this.pet) this.ui.showAdopt(adoptable.kind === 'rabbit' ? 'Bunny' : 'Chick');
+    const myPetCount = this.critters.myPets().length;
+    if (adoptable && myPetCount === 0 && !(tameable === adoptable && hasFood)) this.ui.showAdopt(adoptable.kind === 'rabbit' ? 'Bunny' : 'Chick');
+    else this.ui.hideAdopt();
+    // stay/follow toggle for pets
+    if (myPetCount > 0) this.ui.showPetToggle(this.critters.myPets()[0].mode);
+    else this.ui.hidePetToggle();
 
     // multiplayer pos sync 10Hz
     if (this.isMulti && now - this.lastPosSend > 100) {

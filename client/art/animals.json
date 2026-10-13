@@ -1,0 +1,15 @@
+{
+  "rabbit": "animals/rabbit.png",
+  "chicken": "animals/chicken.png",
+  "butterfly": "animals/butterfly.png",
+  "bird": "animals/bird.png",
+  "fish": "animals/fish.png",
+  "deer": "animals/deer.png",
+  "wolf": "animals/wolf.png",
+  "bear": "animals/bear.png",
+  "fox": "animals/fox.png",
+  "frog": "animals/frog.png",
+  "turtle": "animals/turtle.png",
+  "bee": "animals/bee.png",
+  "sheep": "animals/sheep.png"
+}

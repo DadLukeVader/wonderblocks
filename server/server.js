@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { WebSocketServer, WebSocket } from 'ws';
 import { buildWorld, idx, inBounds, getSpawn } from '../shared/worldgen.js';
 import { MSG, ROLES, CLAIM_RADIUS, validateEdit } from '../shared/protocol.js';
+import { RECIPES, itemDef } from '../shared/items.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(HERE, '..');
@@ -295,6 +296,21 @@ export function startServer({ port = 8080, dataDir = './wonderblocks-data' } = {
     broadcast(room, { t: MSG.EMOTE, id: p.id, e });
   }
 
+  // Crafting is client-authoritative for inventory (inventories are local);
+  // the server only validates that the recipe is real and rate-limits, then
+  // tells the room so others see the toast.
+  function doCraft(ws, msg) {
+    const room = ws.room, p = playerOf(ws);
+    if (!p) return;
+    const recipe = msg.recipe;
+    if (!Number.isInteger(recipe) || !RECIPES[recipe]) return sendError(ws, 'Unknown recipe.');
+    const now = Date.now();
+    if (now - (p.lastCraft || 0) < 300) return sendError(ws, 'Crafting too fast \u2014 slow down.');
+    p.lastCraft = now;
+    broadcast(room, { t: MSG.CRAFT, by: p.id, name: p.name, item: recipe });
+    log(`craft ${p.name} -> ${itemDef(recipe)?.name || recipe} room ${room.code}`);
+  }
+
   function doClaim(ws, msg) {
     const room = ws.room, p = playerOf(ws);
     if (!p) return;
@@ -376,6 +392,7 @@ export function startServer({ port = 8080, dataDir = './wonderblocks-data' } = {
       case MSG.POS: return doPos(ws, msg);
       case MSG.EDIT: return doEdit(ws, msg);
       case MSG.CHAT: return doChat(ws, msg);
+      case MSG.CRAFT: return doCraft(ws, msg);
       case MSG.EMOTE: return doEmote(ws, msg);
       case MSG.CLAIM: return doClaim(ws, msg);
       case MSG.UNCLAIM: return doUnclaim(ws, msg);

@@ -180,6 +180,17 @@ function drawAtlas() {
   for (const [x0, bend] of [[6, -4], [12, 3], [18, -3], [24, 4], [15, 0]]) {
     g.beginPath(); g.moveTo(x0, T); g.quadraticCurveTo(x0 + bend, 20, x0 + bend * 1.6, 8 + ((x0 * 3) % 8)); g.stroke();
   } done();
+  // 40 torch (block 39): wooden stick with a warm flame
+  tile(40); g.clearRect(0, 0, T, T);
+  g.fillStyle = '#8a5a32'; g.fillRect(14, 12, 4, 20);
+  g.fillStyle = '#ffb84d'; g.fillRect(11, 4, 10, 10);
+  g.fillStyle = '#ffe066'; g.fillRect(13, 6, 6, 6);
+  g.fillStyle = '#fff3c4'; g.fillRect(15, 8, 2, 3); done();
+  // 41 workbench (block 40): sturdy top with tiny tools
+  tile(41); fill('#d9a05e'); speck(24, ['#c78f4f'], 2);
+  g.fillStyle = '#8a5a32'; g.fillRect(0, 0, T, 5);
+  g.fillStyle = '#9d7bff'; g.fillRect(6, 12, 8, 3); g.fillRect(8, 8, 3, 12);
+  g.fillStyle = '#e03131'; g.fillRect(20, 14, 6, 6); done();
 
   const tex = new THREE.CanvasTexture(cv);
   tex.magFilter = THREE.NearestFilter;

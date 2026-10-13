@@ -1,5 +1,7 @@
 // WonderBlocks UI: menus, HUD, inventory, chat, tutorial, touch controls.
 import { B, BLOCKS, CATEGORIES, blockDef } from 'wb-shared/blocks.js';
+import { FOODS, foodDef } from 'wb-shared/foods.js';
+import { ITEMS, isItem, itemDef, totalDefense } from 'wb-shared/items.js';
 import { SKIN_TONES, HAIR_STYLES, HAIR_COLORS, SHIRT_COLORS, PANTS_COLORS } from './character.js';
 
 const SWATCH = {
@@ -9,7 +11,7 @@ const SWATCH = {
   19: '#ffd94d', 20: '#7db8ff', 21: '#ff9d5c', 22: '#9d7bff', 23: 'linear-gradient(180deg,#ff6b6b,#ffe066,#8ce99a,#74c0fc,#b197fc)',
   24: '#f5c542', 25: '#bfe6f7', 26: '#ffffff', 27: '#9c7040', 28: '#3fa34d', 29: '#f0a8c0',
   30: '#58b368', 31: '#a4713f', 32: '#bfe6f7', 33: '#a9a9b5', 34: '#f2f7ff', 36: '#a4713f',
-  37: '#c78f4f', 38: '#ff6b6b',
+  37: '#c78f4f', 38: '#ff6b6b', 39: '#ffb84d', 40: '#d9a05e',
 };
 
 const el = id => document.getElementById(id);
@@ -68,9 +70,10 @@ export class UI {
           <button data-a="chat" title="Chat (Enter)">💬</button>
           <button data-a="players" title="Players">👥</button>
           <button data-a="emotes" title="Emotes">😄</button>
+          <button data-a="crafting" title="Crafting (C)">🛠️</button>
+          <button data-a="camera" title="Camera: 1st/3rd person (V)">🎥</button>
           <button data-a="claim" title="Claim land">🚩</button>
           <button data-a="mute" title="Mute (M)">🔊</button>
-          <button data-a="menu" title="Menu (Esc)">⏸️</button>
         </div>
         <div id="emotebar" class="hidden">
           <button data-e="wave">👋</button><button data-e="happy">😄</button>
@@ -85,6 +88,8 @@ export class UI {
         <div id="help" class="panel hidden"></div>
         <div id="tutorial" class="hidden"></div>
         <button id="adoptbtn" class="hidden">🐾 Adopt pet</button>
+        <button id="feedbtn" class="hidden">🍎 Feed</button>
+        <button id="pettogglebtn" class="hidden">🐾 Pets: following</button>
       </div>
     </div>`);
 
@@ -104,6 +109,8 @@ export class UI {
     });
     chatin.addEventListener('blur', () => { el('chat').classList.add('hidden'); });
     el('adoptbtn').addEventListener('click', () => this.h.onAdopt());
+    el('feedbtn').addEventListener('click', () => this.h.onFeed());
+    el('pettogglebtn').addEventListener('click', () => this.h.onTogglePets());
   }
 
   // ---------- menu ----------
@@ -193,11 +200,11 @@ export class UI {
       <div class="helptext">
       <b>🖥️ Computer:</b> WASD move · Space jump · mouse look (click to lock) ·
       <b>Left click</b> break · <b>Right click</b> place · wheel / 1–9 hotbar ·
-      E inventory · Enter chat · V first-person · Shift sprint<br><br>
+      E inventory · Enter chat · V or 🎥 button = first-person · Shift sprint<br><br>
       <b>📱 Phone/tablet:</b> left joystick moves · drag to look ·
-      tap a block to target it, then JUMP / ⛏️ / 🧱 buttons.<br><br>
+      tap a block to target it, then JUMP / ⛏️ / 🧱 buttons · 🎥 toggles camera.<br><br>
       Break blocks to collect them, open 🎒 to pick materials, and build!
-      Claim land with 🚩 to protect your builds. Adopt rabbits & chickens with 🐾.
+      Claim land with 🚩 to protect your builds. Feed wild animals their favorite snacks to tame them as pets! 🍎
       </div>
       <div class="row"><button class="mbtn primary" id="m_back">Back</button></div>`;
     el('m_back').onclick = () => this.menuMain();
@@ -219,10 +226,12 @@ export class UI {
   renderHotbar(inv) {
     const hb = el('hotbar');
     hb.innerHTML = inv.hotbar.map((id, i) => {
-      const def = blockDef(id);
+      const it = isItem(id) ? itemDef(id) : null;
+      const def = it || blockDef(id);
       const cnt = inv.count(id);
+      const sw = it ? it.color : (SWATCH[id] || '#ccc');
       return `<div class="slot ${i === inv.sel ? 'sel' : ''}" data-i="${i}">
-        <div class="sw" style="background:${SWATCH[id] || '#ccc'}"></div>
+        <div class="sw" style="background:${sw};display:flex;align-items:center;justify-content:center">${it ? `<span style="font-size:20px">${it.icon}</span>` : ''}</div>
         <span class="key">${i + 1}</span>
         <span class="cnt">${cnt === Infinity ? '∞' : cnt}</span>
         <span class="nm">${esc(def.name)}</span></div>`;
@@ -305,9 +314,13 @@ export class UI {
         <button data-a="visitor" data-id="${pl.id}" title="Make visitor">👀</button>
         <button data-a="kick" data-id="${pl.id}" title="Kick">🚫</button></span>` : ''}
       </div>`).join('') +
-      `<p class="note">Room code: <b>${esc(this.roomCode || 'demo')}</b></p>`;
+      `<p class="note">Room code: <b>${esc(this.roomCode || 'demo')}</b><br>Invite friends with this code.</p>
+      <button class="mbtn danger" id="pl_leave">🚪 Leave World</button>`;
     p.classList.remove('hidden');
-    p.querySelectorAll('button').forEach(b => b.onclick = () => this.h.onPlayerAction(b.dataset.a, b.dataset.id));
+    p.querySelectorAll('button').forEach(b => {
+      if (b.id === 'pl_leave') { b.onclick = () => this.h.onLeave(); return; }
+      b.onclick = () => this.h.onPlayerAction(b.dataset.a, b.dataset.id);
+    });
   }
 
   // ---------- inventory panel ----------
@@ -316,22 +329,71 @@ export class UI {
     if (!p.classList.contains('hidden')) { p.classList.add('hidden'); return; }
     document.querySelectorAll('#hud .panel').forEach(x => x.classList.add('hidden'));
     const cats = inv.itemsByCat();
-    p.innerHTML = `<h3>🎒 Inventory</h3><div class="cats">${CATEGORIES.map(c =>
-      `<button class="cat ${c === this._cat || (!this._cat && c === 'natural') ? 'sel' : ''}" data-c="${c}">${c}</button>`).join('')}</div>
-      <div class="igrid"></div>
-      <p class="note">Tap a block to put it in hotbar slot ${inv.sel + 1}.</p>`;
     const cat = this._cat || 'natural';
+    const foodItems = Object.entries(FOODS)
+      .map(([id, f]) => ({ id: +id, name: `${f.icon} ${f.name}`, count: inv.count(+id), desc: f.desc, color: f.color }))
+      .filter(i => i.count > 0);
+    p.innerHTML = `<h3>🎒 Inventory</h3><div class="cats">${CATEGORIES.map(c =>
+      `<button class="cat ${c === cat ? 'sel' : ''}" data-c="${c}">${c}</button>`).join('')}
+      <button class="cat ${cat === 'food' ? 'sel' : ''}" data-c="food">🍎 food</button></div>
+      <div class="igrid"></div>
+      <p class="note">${cat === 'food' ? 'Walk up to a wild animal to feed it its favorite snack!' : `Tap a block to put it in hotbar slot ${inv.sel + 1}.`}</p>`;
     const grid = p.querySelector('.igrid');
-    grid.innerHTML = cats[cat].map(it => `
-      <div class="cell" data-id="${it.id}" title="${esc(it.name)}">
-        <div class="sw" style="background:${SWATCH[it.id] || '#ccc'}"></div>
+    const items = cat === 'food' ? foodItems : cats[cat];
+    grid.innerHTML = (items.length ? items.map(it => `
+      <div class="cell" data-id="${it.id}" data-food="${cat === 'food' ? 1 : 0}" title="${esc(it.desc || it.name)}">
+        <div class="sw" style="background:${cat === 'food' ? it.color : (SWATCH[it.id] || '#ccc')}">${cat === 'food' ? foodDef(it.id).icon : ''}</div>
         <span class="cnt">${it.count === Infinity ? '∞' : it.count}</span>
-        <span class="nm">${esc(it.name)}</span></div>`).join('');
+        <span class="nm">${esc(it.name)}</span></div>`).join('')
+      : '<p class="note">No food yet \u2014 break leaves, berry bushes & tall grass!</p>');
     grid.querySelectorAll('.cell').forEach(cell => cell.onclick = () => {
-      this.h.onHotbarAssign(inv.sel, +cell.dataset.id);
+      if (cell.dataset.food === '1') this.toast('Walk up to a wild animal and tap the feed button to offer it a snack! 🍎');
+      else this.h.onHotbarAssign(inv.sel, +cell.dataset.id);
       p.classList.add('hidden');
     });
     p.querySelectorAll('.cat').forEach(b => b.onclick = () => { this._cat = b.dataset.c; this.toggleInventory(inv); this.toggleInventory(inv); });
+    // ---- gear: equipped armor + armory (equip buttons) ----
+    const gear = document.createElement('div');
+    gear.innerHTML = `<h3>⚔️ Gear</h3><div class="gear" style="display:flex;gap:8px;margin:6px 0"></div>
+      <div style="margin:4px 0">🛡️ Total defense: <b>${totalDefense(inv.equipment)}</b> <small style="opacity:.65">(display only — no combat yet)</small></div>
+      <div class="armory"></div>`;
+    const slots = gear.querySelector('.gear');
+    for (const slot of ['head', 'chest', 'feet']) {
+      const eid = inv.equipment[slot];
+      const ed = eid ? itemDef(eid) : null;
+      const d = document.createElement('div');
+      d.className = 'cell'; d.style.minWidth = '86px'; d.title = ed ? 'Tap to unequip' : slot;
+      d.innerHTML = `<div class="sw" style="background:${ed ? ed.color : '#333a44'};display:flex;align-items:center;justify-content:center">${ed ? `<span style="font-size:20px">${ed.icon}</span>` : ''}</div>
+        <span class="nm">${ed ? esc(ed.name) : slot + ' (empty)'}</span>`;
+      if (ed) d.onclick = () => { inv.equipment[slot] = null; inv.add(eid); this.toggleInventory(inv); this.toggleInventory(inv); };
+      slots.appendChild(d);
+    }
+    const armory = gear.querySelector('.armory');
+    let anyArmor = false;
+    for (const [idStr, it] of Object.entries(ITEMS)) {
+      const aid = +idStr;
+      if (it.kind !== 'armor') continue;
+      const c = inv.counts.get(aid) || 0;
+      if (c <= 0 && !inv.unlimited) continue;
+      anyArmor = true;
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;margin:4px 0';
+      row.innerHTML = `<div class="sw" style="background:${it.color};display:flex;align-items:center;justify-content:center"><span style="font-size:20px">${it.icon}</span></div>
+        <span style="flex:1">${esc(it.name)} <small>(${it.slot} · +${it.defense} def · ×${inv.unlimited ? '∞' : c})</small></span>`;
+      const btn = document.createElement('button');
+      btn.className = 'mbtn'; btn.textContent = 'Equip';
+      btn.onclick = () => {
+        if (!inv.remove(aid)) return;
+        const cur = inv.equipment[it.slot];
+        if (cur) inv.add(cur);
+        inv.equipment[it.slot] = aid;
+        this.toggleInventory(inv); this.toggleInventory(inv);
+      };
+      row.appendChild(btn);
+      armory.appendChild(row);
+    }
+    if (!anyArmor) armory.innerHTML = '<p class="note">No armor yet — craft some with 🛠️!</p>';
+    p.appendChild(gear);
     p.classList.remove('hidden');
   }
 
@@ -393,6 +455,20 @@ export class UI {
     this._adoptT = setTimeout(() => b.classList.add('hidden'), 6000);
   }
   hideAdopt() { el('adoptbtn').classList.add('hidden'); }
+  showFeed(label) {
+    const b = el('feedbtn');
+    b.classList.remove('hidden');
+    b.textContent = label;
+    clearTimeout(this._feedT);
+    this._feedT = setTimeout(() => b.classList.add('hidden'), 6000);
+  }
+  hideFeed() { el('feedbtn').classList.add('hidden'); clearTimeout(this._feedT); }
+  showPetToggle(mode) {
+    const b = el('pettogglebtn');
+    b.classList.remove('hidden');
+    b.textContent = mode === 'stay' ? '🐾 Pets: staying \u2014 tap to follow' : '🐾 Pets: following \u2014 tap to stay';
+  }
+  hidePetToggle() { el('pettogglebtn').classList.add('hidden'); }
 
   // ---------- touch controls ----------
   buildTouch() {

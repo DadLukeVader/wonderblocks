@@ -16,6 +16,7 @@ export const MSG = {
   KICK: 'kick',           // C->S {target} (owner only)
   SETTINGS: 'settings',   // C->S {pvp?...} (owner only) | S->C {settings}
   ERROR: 'error',          // S->C {msg}
+  CRAFT: 'craft',          // C->S {recipe} (craft an item) | S->C {by, name, item}
   PING: 'ping',           // both (keepalive)
 };
 
@@ -34,7 +35,7 @@ export function makeRoomCode() {
 export function validateEdit({ x, y, z, b }, playerId, roles, claims, getBlock) {
   if (!Number.isInteger(x) || !Number.isInteger(y) || !Number.isInteger(z)) return 'Bad coordinates.';
   if (x < 0 || x >= 128 || y < 0 || y >= 64 || z < 0 || z >= 128) return 'Outside the world.';
-  if (!Number.isInteger(b) || b < 0 || b > 38) return 'Unknown block.';
+  if (!Number.isInteger(b) || b < 0 || b > 40) return 'Unknown block.';
   const role = roles[playerId] || ROLES.BUILDER;
   if (role === ROLES.VISITOR) return 'Visitors cannot build. Ask the owner to promote you.';
   const cur = getBlock(x, y, z);

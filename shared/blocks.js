@@ -10,7 +10,7 @@ export const B = {
   CRYSTAL: 22, RAINBOW: 23, GOLD: 24, ICE: 25, CLOUD: 26,
   PALM_WOOD: 27, PALM_LEAVES: 28, BERRY_BUSH: 29, TALL_GRASS: 30,
   DOOR: 31, WINDOW: 32, STONE_BRICK: 33, SNOW_BLOCK: 34, BEDROCK: 35,
-  BOOKSHELF: 36, FENCE: 37, CLAIM_FLAG: 38,
+  BOOKSHELF: 36, FENCE: 37, CLAIM_FLAG: 38, TORCH: 39, WORKBENCH: 40,
 };
 
 const D = (name, cat, tiles, opts = {}) => ({
@@ -67,6 +67,8 @@ export const BLOCKS = {
   [B.BOOKSHELF]: D('Bookshelf', 'decor', { top: 12, side: 36, bottom: 12 }, { hardness: 0.7 }),
   [B.FENCE]: D('Fence', 'building', 37, { hardness: 0.5, opaque: false }),
   [B.CLAIM_FLAG]: D('Claim Flag', 'special', 38, { solid: false, cross: true, opaque: false, hardness: 0.2 }),
+  [B.TORCH]: D('Torch', 'decor', 40, { solid: false, cross: true, opaque: false, hardness: 0.2, glow: true }),
+  [B.WORKBENCH]: D('Workbench', 'building', 41, { hardness: 0.7 }),
 };
 
 // Fix tall grass tile index (kept readable above)
@@ -85,4 +87,5 @@ export const STARTER_KIT = [
   [B.ROOF, 40], [B.DOOR, 2], [B.BRICK_RED, 32], [B.LANTERN, 8],
   [B.FLOWER_RED, 10], [B.FLOWER_YELLOW, 10], [B.TALL_GRASS, 16],
   [B.FENCE, 24], [B.GLOW, 8],
+  [134, 4], // raw fish (animals subsystem) — lets players try taming right away
 ];

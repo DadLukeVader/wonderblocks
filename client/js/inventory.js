@@ -1,5 +1,6 @@
 // WonderBlocks inventory: block counts, 9-slot hotbar, starter kit.
 import { B, BLOCKS, CATEGORIES, blockDef, STARTER_KIT } from 'wb-shared/blocks.js';
+import { isItem, itemDef } from 'wb-shared/items.js';
 
 const DEFAULT_HOTBAR = [B.PLANKS, B.WOOD, B.GLASS, B.WINDOW, B.ROOF, B.DOOR, B.LANTERN, B.FLOWER_RED, B.GRASS];
 
@@ -9,7 +10,9 @@ export class Inventory {
     this.hotbar = [...DEFAULT_HOTBAR];
     this.sel = 0;
     this.unlimited = false;
+    this.equipment = { head: null, chest: null, feet: null }; // equipped armor (item ids)
     for (const [id, n] of STARTER_KIT) this.add(id, n);
+    this.add(100); // starter wooden pickaxe: faster stone-breaking from the first minute
   }
   add(id, n = 1) {
     if (!id || id === B.AIR) return;
@@ -26,6 +29,8 @@ export class Inventory {
   }
   count(id) { return this.unlimited ? Infinity : (this.counts.get(id) || 0); }
   selectedBlock() { return this.hotbar[this.sel]; }
+  // Wielded craftable item (tool/weapon/armor), or null when a plain block is selected.
+  selectedItem() { const id = this.hotbar[this.sel]; return isItem(id) ? itemDef(id) : null; }
   canPlace(id) { return this.unlimited || (this.counts.get(id) || 0) > 0; }
   setHotbarSlot(i, id) { this.hotbar[i] = id; this.onChange && this.onChange(); }
 
@@ -40,13 +45,19 @@ export class Inventory {
     return out;
   }
   serialize() {
-    return { counts: [...this.counts.entries()], hotbar: this.hotbar, sel: this.sel };
+    return { counts: [...this.counts.entries()], hotbar: this.hotbar, sel: this.sel, equipment: this.equipment };
   }
   deserialize(s) {
     if (!s) return;
     this.counts = new Map(s.counts || []);
     if (Array.isArray(s.hotbar) && s.hotbar.length === 9) this.hotbar = s.hotbar;
     this.sel = s.sel || 0;
+    if (s.equipment && typeof s.equipment === 'object') {
+      for (const slot of ['head', 'chest', 'feet']) {
+        const id = s.equipment[slot];
+        this.equipment[slot] = isItem(id) && itemDef(id).kind === 'armor' ? id : null;
+      }
+    }
     this.onChange && this.onChange();
   }
 }
