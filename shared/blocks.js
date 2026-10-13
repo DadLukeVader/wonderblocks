@@ -67,7 +67,7 @@ export const BLOCKS = {
   [B.BRICK_SKY]: D('Sky Bricks', 'building', 14, { hardness: 1.0 }),
   [B.BRICK_LEMON]: D('Lemon Bricks', 'building', 30, { hardness: 1.0 }),
   [B.BRICK_ROSE]: D('Rose Bricks', 'building', 31, { hardness: 1.0 }),
-  [B.GLASS]: D('Glass', 'building', 15, { hardness: 0.3, opaque: false }),
+  [B.GLASS]: D('Glass', 'building', 15, { hardness: 0.3, opaque: false, transparent: true, opacity: 0.35 }),
   [B.ROOF]: D('Roof Tiles', 'building', 16, { hardness: 0.8 }),
   [B.GLOW]: D('Glow Block', 'special', 17, { hardness: 0.5, glow: true }),
   [B.FLOWER_RED]: D('Red Flower', 'decor', 18, { solid: false, cross: true, opaque: false, hardness: 0.1 }),
@@ -127,7 +127,7 @@ export const BLOCKS = {
   [B.BLUE_BLOCK]: D('Blue Block', 'building', 14, { hardness: 0.6 }),
   [B.WHITE_BLOCK]: D('White Block', 'building', 8, { hardness: 0.6 }),
   // --- Functional / decorative (Phase 3) ---
-  [B.GLASS_PANE]: D('Glass Pane', 'building', 15, { hardness: 0.3, opaque: false }),
+  [B.GLASS_PANE]: D('Glass Pane', 'building', 15, { hardness: 0.3, opaque: false, transparent: true, opacity: 0.35 }),
   [B.DARK_BRICKS]: D('Dark Bricks', 'building', 13, { hardness: 1.0 }),
   [B.CRACKED_STONE_BRICK]: D('Cracked Stone Bricks', 'building', 34, { hardness: 1.1 }),
   [B.IRON_BLOCK]: D('Iron Block', 'special', 34, { hardness: 1.4 }),

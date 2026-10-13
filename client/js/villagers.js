@@ -6,10 +6,10 @@
 import {
   VILLAGER_PROFESSIONS, VILLAGER_GREETINGS, EMERALD,
   REP_DISCOUNT_THRESHOLD, applyRepDiscount,
-} from 'wb-shared/villagerDefs.js?v=20';
-import { itemDef } from 'wb-shared/items.js?v=20';
-import { foodDef } from 'wb-shared/foods.js?v=20';
-import { blockDef } from 'wb-shared/blocks.js?v=20';
+} from 'wb-shared/villagerDefs.js?v=21';
+import { itemDef } from 'wb-shared/items.js?v=21';
+import { foodDef } from 'wb-shared/foods.js?v=21';
+import { blockDef } from 'wb-shared/blocks.js?v=21';
 
 // Village center (matches shared/worldgen.js Wonder Village)
 const VILLAGE_X = 64, VILLAGE_Z = 64, VILLAGE_R = 20;

@@ -4,7 +4,7 @@
 // Growth is client-side; stage changes go through game.applyEdit so they sync
 // in multiplayer. Crop tracking is not persisted across reloads (acceptable).
 
-import { B } from 'wb-shared/blocks.js?v=20';
+import { B } from 'wb-shared/blocks.js?v=21';
 
 export const CROPS = {
   wheat:  { stages: [B.WHEAT_0, B.WHEAT_1, B.WHEAT_2, B.WHEAT_3], seed: 133, name: 'Wheat' },

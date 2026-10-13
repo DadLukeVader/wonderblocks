@@ -7,9 +7,9 @@
 // have their meshes disposed and are dropped from the cache. Player edits
 // overlay base terrain and are re-applied if a chunk regenerates after eviction.
 import * as THREE from 'three';
-import { B, blockDef } from 'wb-shared/blocks.js?v=20';
-import { CHUNK, WORLD_Y, ENDLESS_WORLD, DIM, buildChunkData } from 'wb-shared/worldgen.js?v=20';
-import { getAtlas, tileUV, makeWaterTexture } from './textures.js?v=20';
+import { B, blockDef } from 'wb-shared/blocks.js?v=21';
+import { CHUNK, WORLD_Y, ENDLESS_WORLD, DIM, buildChunkData } from 'wb-shared/worldgen.js?v=21';
+import { getAtlas, tileUV, makeWaterTexture } from './textures.js?v=21';
 
 export { CHUNK, WORLD_Y };
 
@@ -67,6 +67,7 @@ export class World {
 
     this.opaqueMat = new THREE.MeshLambertMaterial({ map: this.atlas, vertexColors: true });
     this.cutoutMat = new THREE.MeshLambertMaterial({ map: this.atlas, vertexColors: true, alphaTest: 0.45, side: THREE.DoubleSide });
+    this.glassMat = new THREE.MeshLambertMaterial({ map: this.atlas, vertexColors: true, transparent: true, opacity: 0.4, depthWrite: false, side: THREE.DoubleSide });
     this.waterMat = new THREE.MeshLambertMaterial({ map: this.waterAnim.tex, vertexColors: true, transparent: true, opacity: 0.78, depthWrite: false, side: THREE.DoubleSide });
     // Realistic water surface: gentle sine bob on upward-facing vertices + traveling shimmer.
     const waterTime = this.waterTime;
@@ -225,7 +226,7 @@ export class World {
     const data = this.getChunkData(cx, cz);
     if (!data) return;
     let ch = this.chunks.get(key);
-    const op = makeArrays(), cu = makeArrays(), wa = makeArrays();
+    const op = makeArrays(), cu = makeArrays(), wa = makeArrays(), gl = makeArrays();
     const x0 = cx * CHUNK, z0 = cz * CHUNK;
     const waterUV = [[0, 0], [0, 1], [1, 1], [1, 0]]; // standalone water texture
 
@@ -236,7 +237,7 @@ export class World {
           const id = data[cidx(lx, y, lz)];
           if (id === B.AIR) continue;
           const def = blockDef(id);
-          const arr = id === B.WATER ? wa : def.opaque ? op : cu;
+          const arr = id === B.WATER ? wa : def.transparent ? gl : def.opaque ? op : cu;
 
           if (def.cross) {
             const [u0, v0, u1, v1] = tileUV(def.tiles.side);
@@ -289,13 +290,14 @@ export class World {
     };
 
     if (!ch) { ch = {}; this.chunks.set(key, ch); }
-    for (const k of ['opaque', 'cutout', 'water']) {
+    for (const k of ['opaque', 'cutout', 'water', 'glass']) {
       if (ch[k]) { this.scene.remove(ch[k]); ch[k].geometry.dispose(); ch[k] = null; }
     }
     ch.opaque = mkMesh(op, this.opaqueMat);
     ch.cutout = mkMesh(cu, this.cutoutMat);
     ch.water = mkMesh(wa, this.waterMat);
-    for (const k of ['opaque', 'cutout', 'water']) if (ch[k]) this.scene.add(ch[k]);
+    ch.glass = mkMesh(gl, this.glassMat);
+    for (const k of ['opaque', 'cutout', 'water', 'glass']) if (ch[k]) this.scene.add(ch[k]);
     this.dirty.delete(key);
   }
 
