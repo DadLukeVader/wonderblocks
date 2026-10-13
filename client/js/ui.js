@@ -315,10 +315,12 @@ export class UI {
         <button data-a="kick" data-id="${pl.id}" title="Kick">🚫</button></span>` : ''}
       </div>`).join('') +
       `<p class="note">Room code: <b>${esc(this.roomCode || 'demo')}</b><br>Invite friends with this code.</p>
+      <button class="mbtn" id="pl_respawn">📍 Respawn at Village</button>
       <button class="mbtn danger" id="pl_leave">🚪 Leave World</button>`;
     p.classList.remove('hidden');
     p.querySelectorAll('button').forEach(b => {
       if (b.id === 'pl_leave') { b.onclick = () => this.h.onLeave(); return; }
+      if (b.id === 'pl_respawn') { b.onclick = () => this.h.onRespawn(); return; }
       b.onclick = () => this.h.onPlayerAction(b.dataset.a, b.dataset.id);
     });
   }

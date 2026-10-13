@@ -57,6 +57,7 @@ class Game {
       onCreateWorld: name => this.startMulti(name, makeRoomCode()),
       onJoinWorld: (code, name) => this.startMulti(name, code),
       onLeave: () => this.leave(),
+      onRespawn: () => this.respawn(),
       onSendChat: text => this.sendChat(text),
       onSelectHotbar: i => { this.inv.sel = i; this.ui.renderHotbar(this.inv); this.audio.click(); },
       onHotbarAssign: (slot, id) => { this.inv.setHotbarSlot(slot, id); this.ui.renderHotbar(this.inv); this.tutEvent('inventory'); this.audio.click(); },
@@ -135,9 +136,9 @@ class Game {
     await this.world.bootAround(spawnPos[0], spawnPos[2], p => this.ui.loading(0.05 + p * 0.85, 'Growing the world… 🌱'));
     const faceTex = this.faceTexs ? this.faceTexs[(Math.random() * this.faceTexs.length) | 0] : null;
     this.player = new Player(this.scene, this.world, this.ui.char, spawnPos, faceTex);
-    // Failsafe: stale/corrupt saves can place the player inside solid terrain
-    // or at invalid coords (camera collapses into the character). Lift to open
-    // air, or reset to spawn.
+    // Failsafe: stale/corrupt saves can place the player inside solid terrain,
+    // at invalid coords, or trapped under a structure (camera collapses into
+    // the character). Lift to open air, ensure open sky above, or reset to spawn.
     {
       const p = this.player.pos;
       const s = getSpawn();
@@ -145,7 +146,13 @@ class Game {
       const solidAt = (x, y, z) => { const b = this.world.get(Math.floor(x), Math.floor(y), Math.floor(z)); return b !== B.AIR && blockDef(b).solid; };
       let guard = 0;
       while (guard++ < 80 && solidAt(p.x, p.y, p.z)) p.y += 1;
-      if (guard >= 80 || p.y >= 63 || !Number.isFinite(p.y)) p.set(s[0], s[1], s[2]);
+      // Sky check: if there's a roof/structure within 8 blocks above, the
+      // camera can't get a clear view — relocate to the spawn pad.
+      let skyClear = true;
+      for (let y = Math.floor(p.y) + 2; y < Math.floor(p.y) + 10; y++) {
+        if (solidAt(p.x, y, p.z)) { skyClear = false; break; }
+      }
+      if (guard >= 80 || p.y >= 63 || !Number.isFinite(p.y) || !skyClear) p.set(s[0], s[1], s[2]);
     }
     this.critters = new CritterManager(this.scene, this.world);
     await this.critters.spawnInitial();
@@ -275,6 +282,13 @@ class Game {
     try { localStorage.setItem('wb_name', name); } catch { /* noop */ }
   }
 
+  respawn() {
+    const s = getSpawn();
+    this.player.pos.set(s[0], s[1], s[2]);
+    this.player.vel.set(0, 0, 0);
+    this.ui.toast('📍 Respawned at the village!');
+    this.ui.showPlayers(false);
+  }
   leave() {
     if (!this.isMulti) this.saveDemo();
     this.net.close();
