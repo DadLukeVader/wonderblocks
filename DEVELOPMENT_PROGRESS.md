@@ -52,7 +52,16 @@
 - ✅ 8 quests (basic)
 - ⏳ NPC villagers, trading, shops, dialogue
 
-### Phase 8: Dimensions/Portals ⏳ PENDING
+### Phase 8: Dimensions/Portals ✅ COMPLETE
+- ✅ Ember Realm: dark red procedural dimension (ember stone, ash, lava lakes, ember crystals), separate seed offset
+- ✅ Cloud Realm: floating islands (cloud + snow tops, flowers), no bedrock floor — void = respawn
+- ✅ 5 new blocks (95-99): Ember Stone, Ember Ash, Lava, Ember Crystal, Realm Portal + atlas tiles 42-46
+- ✅ Flint & Steel item (141, crafts from stone + wood)
+- ✅ Portals: 4x5 obsidian frame + flint → 2x3 portal; step through to cycle Overworld → Ember → Cloud → Overworld
+- ✅ Dimension switching: chunks cleared + regenerated, per-dimension edits, inventory/player persist, save/load dimension
+- ✅ Per-dimension sky/fog/lighting, realm name in HUD, void respawn in Cloud Realm
+- ✅ MAX_BLOCK_ID for multiplayer edit validation; pets follow through portals
+- ⚠️ Known limits: multiplayer rooms stay overworld-only; remote players in other dims show at wrong spots
 
 ### Phase 9: Multiplayer ⏳ PENDING
 - ✅ LAN (room codes, 5 players, chat, shared building)

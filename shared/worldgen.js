@@ -481,7 +481,10 @@ function _infBlock(seed, x, y, z) {
 // Ember Realm: dark red rolling hills, ash flats, lava lakes, ember crystals.
 function _emberHeight(seed, x, z) {
   const { fbm } = _noiseFor((seed ^ EMBER_XOR) | 0);
-  const h = 16 + fbm(x * 0.02 + 3, z * 0.02 + 9) * 10 - 2;
+  let h = 15 + fbm(x * 0.02 + 3, z * 0.02 + 9) * 10 - 3;
+  // basins dip below the lava level, forming lava lakes
+  const basin = smooth((0.62 - fbm(x * 0.008 + 51, z * 0.008 + 77)) / 0.2);
+  h -= basin * 8;
   return Math.max(4, Math.min(34, Math.round(h)));
 }
 function _emberBlock(seed, x, y, z, h) {

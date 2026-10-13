@@ -1,8 +1,8 @@
 // WonderBlocks main: boot, game loop, building, multiplayer glue, saving.
 import * as THREE from 'three';
-import { B, blockDef, isBreakable } from 'wb-shared/blocks.js?v=19';
-import { getSpawn, biomeNameAt } from 'wb-shared/worldgen.js?v=19';
-import { MSG, ROLES, makeRoomCode } from 'wb-shared/protocol.js?v=19';
+import { B, blockDef, isBreakable } from 'wb-shared/blocks.js?v=20';
+import { getSpawn, getDimensionSpawn, biomeNameAt, DIM, DIM_NAMES, WORLD_Y, buildChunkData } from 'wb-shared/worldgen.js?v=20';
+import { MSG, ROLES, makeRoomCode } from 'wb-shared/protocol.js?v=20';
 import { World } from './world.js?v=18';
 import { loadAtlas } from './textures.js?v=18';
 import { loadFaces } from './character.js?v=18';
@@ -11,12 +11,12 @@ import { Input } from './input.js?v=18';
 import { Inventory } from './inventory.js?v=18';
 import { UI } from './ui.js?v=18';
 import { CraftingUI } from './crafting.js?v=18';
-import { FarmingSystem } from './farming.js?v=19';
-import { FishingSystem } from './fishing.js?v=19';
-import { FurnaceSystem, FurnaceUI } from './furnace.js?v=19';
-import { isItem, itemDef, toolTimeMultiplier } from 'wb-shared/items.js?v=19';
+import { FarmingSystem } from './farming.js?v=20';
+import { FishingSystem } from './fishing.js?v=20';
+import { FurnaceSystem, FurnaceUI } from './furnace.js?v=20';
+import { isItem, itemDef, toolTimeMultiplier } from 'wb-shared/items.js?v=20';
 import { CritterManager } from './animals.js?v=18';
-import { FOOD_DROPS, FOOD_VALUES, foodDef, isFood } from 'wb-shared/foods.js?v=19';
+import { FOOD_DROPS, FOOD_VALUES, foodDef, isFood } from 'wb-shared/foods.js?v=20';
 import { ANIMAL_DEFS } from 'wb-shared/animalDefs.js?v=18';
 import { QuestManager } from './quests.js?v=18';
 import { AudioSys } from './audio.js?v=18';
@@ -24,6 +24,7 @@ import { Net } from './net.js?v=18';
 
 const SAVE_KEY = 'wb_demo';
 const REACH = 6;
+const FLINT_ID = 141; // Flint & Steel (Phase 8): lights obsidian portal frames
 
 class Game {
   constructor() {
@@ -39,6 +40,7 @@ class Game {
     const sun = new THREE.DirectionalLight(0xfff4d6, 1.6);
     sun.position.set(60, 100, 30);
     this.scene.add(hemi, sun);
+    this.hemi = hemi; this.sun = sun; // Phase 8: dimmed/tinted per dimension
 
     this.input = new Input(this.canvas);
     this.audio = new AudioSys();
@@ -54,6 +56,8 @@ class Game {
     this.breakState = null;
     this.lastPosSend = 0;
     this.wasInWater = false;
+    this.dimension = DIM.OVERWORLD; // Phase 8: current dimension
+    this._portalCooldown = 0;       // seconds of teleport immunity after hopping
 
     this.ui = new UI(this.input, {
       onPlayDemo: name => this.startDemo(name),
@@ -227,8 +231,17 @@ class Game {
     const seed = save?.seed ?? (Math.random() * 2 ** 32) | 0;
     if (save?.inv) this.inv.deserialize(save.inv);
     if (save?.quests) this.quests.deserialize(save.quests);
+    // Phase 8: always boot the overworld first; the saved dimension (if any)
+    // is restored after edits are applied below.
+    this.dimension = DIM.OVERWORLD;
     await this.bootWorld(seed, save?.player || getSpawn());
-    if (save?.edits) for (const [x, y, z, b] of save.edits) this.world.set(x, y, z, b);
+    this.applyDimensionSky();
+    // edits are [x,y,z,b] (legacy) or [x,y,z,b,dim] (Phase 8+) — restore per dimension
+    if (save?.edits) for (const [x, y, z, b, d] of save.edits) this.world.setRaw(x, y, z, b, d ?? DIM.OVERWORLD);
+    // Phase 8: resume in the saved dimension
+    if (save?.dimension && save.dimension !== DIM.OVERWORLD && save.player) {
+      await this.enterDimension(save.dimension, save.player[0], save.player[1], save.player[2], { silent: true });
+    }
     this.ui.chatAdd('', `Welcome back to WonderBlocks, ${name}! 🌱`, false, true);
     if (!save?.tutorialDone) this.startTutorial();
     if (save?.pet || save?.pets) this.restorePet(save);
@@ -244,6 +257,7 @@ class Game {
       return;
     }
     this.isMulti = true;
+    this.dimension = DIM.OVERWORLD; // multiplayer rooms live in the overworld
     this.ui.roomCode = code;
     const clientId = localStorage.getItem('wb_client') || (Math.random().toString(36).slice(2) + Date.now().toString(36));
     localStorage.setItem('wb_client', clientId);
@@ -324,12 +338,161 @@ class Game {
   }
 
   respawn() {
-    const s = getSpawn();
+    // Phase 8: respawn in the current dimension (village in the overworld).
+    const s = getDimensionSpawn(this.world ? this.world.seed : 0, this.dimension);
     this.player.pos.set(s[0], s[1], s[2]);
     this.player.vel.set(0, 0, 0);
-    this.ui.toast('📍 Respawned at the village!');
+    this.ui.toast(this.dimension === DIM.OVERWORLD ? '📍 Respawned at the village!' : `📍 Respawned in the ${DIM_NAMES[this.dimension]}!`);
     this.ui.showPlayers(false);
   }
+
+  // ---------------- Phase 8: dimensions & portals ----------------
+  // Tint sky, fog and lights per dimension.
+  applyDimensionSky() {
+    const d = this.dimension;
+    if (d === DIM.EMBER) {
+      this.scene.background.set(0x200505);
+      this.scene.fog.color.set(0x521505);
+      this.scene.fog.near = 20; this.scene.fog.far = 90;
+      this.sun.intensity = 0.7; this.sun.color.set(0xff9a5c);
+      this.hemi.intensity = 0.5;
+    } else if (d === DIM.CLOUD) {
+      this.scene.background.set(0x9fd4ff);
+      this.scene.fog.color.set(0xcfeaff);
+      this.scene.fog.near = 50; this.scene.fog.far = 200;
+      this.sun.intensity = 1.8; this.sun.color.set(0xfff4d6);
+      this.hemi.intensity = 1.2;
+    } else {
+      this.scene.background.set(0x87ceeb);
+      this.scene.fog.color.set(0x9fd8f0);
+      this.scene.fog.near = 40; this.scene.fog.far = 140;
+      this.sun.intensity = 1.6; this.sun.color.set(0xfff4d6);
+      this.hemi.intensity = 1.0;
+    }
+  }
+
+  // Hop to another dimension: clear chunks, regenerate around the target,
+  // keep inventory + player. Pets stay behind (they'll be there when you return).
+  async enterDimension(dim, x, y, z, opts = {}) {
+    if (!this.world || !this.player) return;
+    this.dimension = dim;
+    this.world.setDimension(dim);
+    this.player.pos.set(x, y, z);
+    this.player.vel.set(0, 0, 0);
+    this.ui.loading(0.5, `Entering the ${DIM_NAMES[dim]}… 🌀`);
+    await this.world.bootAround(x, z);
+    this.applyDimensionSky();
+    this.ui.loading(1, 'Ready!');
+    if (!opts.silent) {
+      this.ui.toast(`🌀 Welcome to the ${DIM_NAMES[dim]}!`);
+      this.audio.quest();
+    }
+    this._portalCooldown = 3; // don't bounce straight back through
+    this._biome = null; // refresh the location label
+  }
+
+  // Find a safe landing spot in the target dimension near (x, z):
+  // topmost solid block with two air blocks above it.
+  findLanding(dim, x, z) {
+    const w = this.world;
+    const cx = Math.floor(x / 16), cz = Math.floor(z / 16);
+    // generate the target chunk data directly (pure) without switching worlds
+    const data = buildChunkData(w.seed, cx, cz, dim);
+    const cidx = (lx, y, lz) => (y * 16 + lz) * 16 + lx;
+    const lx = x - cx * 16, lz = z - cz * 16;
+    for (let y = WORLD_Y - 2; y > 1; y--) {
+      const b = data[cidx(lx, y, lz)];
+      if (b !== B.AIR && b !== B.WATER && b !== B.LAVA && blockDef(b).solid &&
+          data[cidx(lx, y + 1, lz)] === B.AIR && data[cidx(lx, y + 2, lz)] === B.AIR) {
+        return [x + 0.5, y + 1.01, z + 0.5];
+      }
+    }
+    return null; // void (cloud) — caller falls back to the dimension spawn
+  }
+
+  // Step through a portal block: overworld -> ember -> cloud -> overworld…
+  async teleportThroughPortal() {
+    if (this._portalCooldown > 0 || this._teleporting) return;
+    this._teleporting = true;
+    this._portalCooldown = 3; // set immediately — don't bounce straight back
+    try {
+      const order = [DIM.OVERWORLD, DIM.EMBER, DIM.CLOUD];
+      const next = order[(order.indexOf(this.dimension) + 1) % order.length];
+      const p = this.player.pos;
+      const landing = this.findLanding(next, Math.floor(p.x), Math.floor(p.z));
+      if (landing) await this.enterDimension(next, landing[0], landing[1], landing[2]);
+      else {
+        const s = getDimensionSpawn(this.world.seed, next);
+        await this.enterDimension(next, s[0], s[1], s[2]);
+      }
+    } finally {
+      this._teleporting = false;
+    }
+  }
+
+  // Scan a 13^3 box around the clicked block for a 4x5 obsidian frame ring
+  // (outer 4 wide x 5 tall, hollow 2x3 interior) in either the XY or ZY plane.
+  // Returns the interior cell list or null.
+  findPortalFrame(hx, hy, hz) {
+    const w = this.world;
+    const R = 6;
+    for (const plane of ['xy', 'zy']) {
+      // group obsidian cells by the fixed axis
+      const groups = new Map();
+      for (let x = hx - R; x <= hx + R; x++)
+        for (let y = hy - R; y <= hy + R; y++)
+          for (let z = hz - R; z <= hz + R; z++) {
+            if (w.get(x, y, z) !== B.OBSIDIAN) continue;
+            const fk = plane === 'xy' ? z : x;
+            const k = fk + '';
+            if (!groups.has(k)) groups.set(k, []);
+            groups.get(k).push(plane === 'xy' ? [x, y] : [z, y]);
+          }
+      for (const [fk, cells] of groups) {
+        let minA = 1e9, maxA = -1e9, minY = 1e9, maxY = -1e9;
+        const set = new Set(cells.map(([a, y]) => a + ',' + y));
+        for (const [a, y] of cells) {
+          if (a < minA) minA = a; if (a > maxA) maxA = a;
+          if (y < minY) minY = y; if (y > maxY) maxY = y;
+        }
+        const W = maxA - minA + 1, H = maxY - minY + 1;
+        if (W !== 4 || H !== 5) continue;
+        // border must be fully obsidian: 2*4 + 2*3 = 14 cells
+        let border = 0;
+        for (let a = minA; a <= maxA; a++)
+          for (let y = minY; y <= maxY; y++) {
+            const edge = a === minA || a === maxA || y === minY || y === maxY;
+            if (edge && set.has(a + ',' + y)) border++;
+            else if (!edge && set.has(a + ',' + y)) border = -1; // obsidian inside
+          }
+        if (border !== 14) continue;
+        // interior must be clear of obsidian
+        const interior = [];
+        let ok = true;
+        for (let a = minA + 1; a <= maxA - 1 && ok; a++)
+          for (let y = minY + 1; y <= maxY - 1 && ok; y++) {
+            const gx = plane === 'xy' ? a : +fk, gz = plane === 'xy' ? +fk : a;
+            if (w.get(gx, y, gz) === B.OBSIDIAN) { ok = false; break; }
+            interior.push([gx, y, gz]);
+          }
+        if (ok && interior.length === 6) return interior;
+      }
+    }
+    return null;
+  }
+
+  // Flint & Steel on a valid obsidian frame -> fill the 2x3 interior with portal.
+  tryLightPortal(hit) {
+    const interior = this.findPortalFrame(hit.x, hit.y, hit.z);
+    if (!interior) {
+      this.ui.toast('🪔 No 4×5 obsidian frame here. Build one first!');
+      return;
+    }
+    for (const [x, y, z] of interior) this.applyEdit(x, y, z, B.PORTAL);
+    this.audio.quest();
+    this.ui.toast('🌀 Portal ignited! Step through to the next realm…');
+  }
+
   // Update the 3D item shown in the player's hand from the hotbar selection.
   updateHeldItem() {
     if (!this.player || !this.inv) return;
@@ -355,6 +518,7 @@ class Game {
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
         seed: this.world.seed,
+        dimension: this.dimension, // Phase 8
         edits: this.world ? this.world.editsList() : [],
         player: [this.player.pos.x, this.player.pos.y, this.player.pos.z],
         inv: this.inv.serialize(),
@@ -637,8 +801,12 @@ class Game {
       }
     } else this.breakState = null;
 
-    // placing (edge)
-    if (this.input.consumePlaceEdge() && hit) this.tryPlace(hit);
+    // placing (edge) — or lighting a portal with Flint & Steel
+    if (this.input.consumePlaceEdge() && hit) {
+      const sel = this.inv.hotbar[this.inv.sel];
+      if (sel === FLINT_ID) this.tryLightPortal(hit);
+      else this.tryPlace(hit);
+    }
     // hotbar select
     const w = this.input.consumeWheel();
     if (w) { this.inv.sel = (this.inv.sel + w + 9) % 9; this.ui.renderHotbar(this.inv); }
@@ -762,11 +930,21 @@ class Game {
     const mv = this.input.moveVec();
     if (this.input.enabled) {
       this.player.update(dt, { f: mv.f, s: mv.s, jump: this.input.jumpHeld, sprint: this.input.sprintKey || (this.input.joy.active && Math.hypot(mv.f, mv.s) > 0.92) });
-      // Safety net: if the player somehow falls through the world, respawn.
+      // Safety net: falling through the world (or into the cloud void) respawns
+      // in the current dimension.
       if (this.player.pos.y < 10) {
-        const s = getSpawn();
+        const s = getDimensionSpawn(this.world.seed, this.dimension);
         this.player.pos.set(s[0], s[1], s[2]);
         this.player.vel.set(0, 0, 0);
+        if (this.dimension === DIM.CLOUD) this.ui.toast('☁️ The void caught you! Back to the islands…');
+      }
+      // Phase 8: stepping into a lit portal hops dimensions (with cooldown).
+      if (this._portalCooldown > 0) this._portalCooldown -= dt;
+      else {
+        const px = Math.floor(this.player.pos.x), pz = Math.floor(this.player.pos.z);
+        const feetB = this.world.get(px, Math.floor(this.player.pos.y) + 0, pz);
+        const waistB = this.world.get(px, Math.floor(this.player.pos.y) + 1, pz);
+        if (feetB === B.PORTAL || waistB === B.PORTAL) this.teleportThroughPortal();
       }
       if (Math.hypot(mv.f, mv.s) > 0.3 && this.player.speed2d > 1) this.tutEvent('move');
       if (this.input.jumpHeld && this.player.vel.y > 3) this.tutEvent('jump');
@@ -858,8 +1036,11 @@ class Game {
 
     // HUD
     this.ui.drawCompass(this.player.yaw);
-    const bn = biomeNameAt(Math.floor(this.player.pos.x), Math.floor(this.player.pos.z));
-    if (bn !== this._biome) { this._biome = bn; this.ui.setBiome(bn); if (this.started && this._biomeInit) this.ui.toast('📍 ' + bn); this._biomeInit = true; }
+    // Phase 8: in other dimensions the location label shows the realm name.
+    const dimLabel = this.dimension === DIM.OVERWORLD
+      ? biomeNameAt(Math.floor(this.player.pos.x), Math.floor(this.player.pos.z))
+      : DIM_NAMES[this.dimension];
+    if (dimLabel !== this._biome) { this._biome = dimLabel; this.ui.setBiome(dimLabel); if (this.started && this._biomeInit) this.ui.toast('📍 ' + dimLabel); this._biomeInit = true; }
 
     // autosave demo
     if (!this.isMulti && now - this.lastSave > 20000) { this.lastSave = now; this.saveDemo(); }

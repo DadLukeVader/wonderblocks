@@ -1,7 +1,7 @@
 // WonderBlocks UI: menus, HUD, inventory, chat, tutorial, touch controls.
-import { B, BLOCKS, CATEGORIES, blockDef } from 'wb-shared/blocks.js?v=19';
-import { FOODS, foodDef } from 'wb-shared/foods.js?v=19';
-import { ITEMS, isItem, itemDef, totalDefense } from 'wb-shared/items.js?v=19';
+import { B, BLOCKS, CATEGORIES, blockDef } from 'wb-shared/blocks.js?v=20';
+import { FOODS, foodDef } from 'wb-shared/foods.js?v=20';
+import { ITEMS, isItem, itemDef, totalDefense } from 'wb-shared/items.js?v=20';
 import { SKIN_TONES, HAIR_STYLES, HAIR_COLORS, SHIRT_COLORS, PANTS_COLORS } from './character.js?v=18';
 
 const SWATCH = {
