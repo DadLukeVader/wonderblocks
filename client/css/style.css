@@ -175,3 +175,12 @@ html, body { margin: 0; padding: 0; overflow: hidden; height: 100%; background: 
 
 #vitals { position: fixed; bottom: 76px; left: 50%; transform: translateX(-50%); display: flex; gap: 16px; pointer-events: none; z-index: 50; font-size: 18px; }
 #hearts, #hungerbar { text-shadow: 0 1px 3px rgba(0,0,0,0.6); letter-spacing: 1px; }
+
+/* Phase 4: furnace panel */
+.frow { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+.frow .flabel { width: 64px; font-weight: 700; color: #4a6fa5; }
+.frow .fslot { flex: 1; background: #f2f5fa; border-radius: 10px; padding: 10px 12px; font-size: 16px; }
+.frow .fslot i { color: #9aa3b5; font-style: normal; }
+.frow .mbtn { width: auto; margin: 0; padding: 8px 14px; font-size: 15px; }
+.fprog { height: 12px; background: #e8ecf4; border-radius: 6px; overflow: hidden; margin: 10px 0; }
+.fprogbar { height: 100%; background: linear-gradient(90deg, #ffb84d, #ff7d3c); border-radius: 6px; transition: width 0.5s; }

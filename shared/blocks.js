@@ -24,6 +24,13 @@ export const B = {
   // Functional / decorative
   GLASS_PANE: 71, DARK_BRICKS: 72, CRACKED_STONE_BRICK: 73, IRON_BLOCK: 74, COPPER_BLOCK: 75,
   DIAMOND_BLOCK: 76, EMERALD_BLOCK: 77, OBSIDIAN: 78, MOSSY_BRICKS: 79, TERRACOTTA: 80,
+  // --- Phase 4: farming & cooking (81-94)
+  TILLED_SOIL: 81, FURNACE: 82,
+  WHEAT_0: 83, WHEAT_1: 84, WHEAT_2: 85, WHEAT_3: 86,
+  CARROT_0: 87, CARROT_1: 88, CARROT_2: 89, CARROT_3: 90,
+  POTATO_0: 91, POTATO_1: 92, POTATO_2: 93, POTATO_3: 94,
+  // --- Phase 8: dimensions & portals (95-99)
+  EMBER_STONE: 95, EMBER_ASH: 96, LAVA: 97, EMBER_CRYSTAL: 98, PORTAL: 99,
 };
 
 const D = (name, cat, tiles, opts = {}) => ({
@@ -39,6 +46,10 @@ const D = (name, cat, tiles, opts = {}) => ({
   drop: opts.drop,                // item id granted (default: self)
   glow: !!opts.glow,
 });
+
+// Crop helper: cross-quad plant, non-solid, drops seeds (133) when broken young.
+const cropD = (name, tile) => D(name, 'natural', tile,
+  { solid: false, cross: true, opaque: false, hardness: 0.1, drop: 133 });
 
 export const BLOCKS = {
   [B.AIR]: D('Air', 'natural', 0, { solid: false, selectable: false, opaque: false }),
@@ -126,10 +137,31 @@ export const BLOCKS = {
   [B.OBSIDIAN]: D('Obsidian', 'special', 35, { hardness: 2.0 }),
   [B.MOSSY_BRICKS]: D('Mossy Bricks', 'building', 13, { hardness: 1.0 }),
   [B.TERRACOTTA]: D('Terracotta', 'building', 10, { hardness: 0.8 }),
+
+  // --- Phase 4: farming & cooking ---
+  [B.TILLED_SOIL]: D('Tilled Soil', 'natural', 2, { hardness: 0.4, drop: B.DIRT }),
+  [B.FURNACE]: D('Furnace', 'special', 33, { hardness: 1.2 }),
+  // Crops: cross-quads, non-solid. Immature stages drop seeds; mature drops via FOOD_DROPS.
+  [B.WHEAT_0]: cropD('Wheat Sprout', 39), [B.WHEAT_1]: cropD('Wheat Sprout', 39),
+  [B.WHEAT_2]: cropD('Growing Wheat', 39), [B.WHEAT_3]: cropD('Ripe Wheat', 19),
+  [B.CARROT_0]: cropD('Carrot Sprout', 39), [B.CARROT_1]: cropD('Carrot Sprout', 39),
+  [B.CARROT_2]: cropD('Growing Carrot', 39), [B.CARROT_3]: cropD('Ripe Carrot', 18),
+  [B.POTATO_0]: cropD('Potato Sprout', 39), [B.POTATO_1]: cropD('Potato Sprout', 39),
+  [B.POTATO_2]: cropD('Growing Potato', 39), [B.POTATO_3]: cropD('Ripe Potato', 20),
 };
 
 // Fix tall grass tile index (kept readable above)
 BLOCKS[B.TALL_GRASS].tiles = { top: 39, side: 39, bottom: 39 };
+
+// --- Phase 8: dimension blocks (tiles 42-46 in the atlas) ---
+BLOCKS[B.EMBER_STONE] = D('Ember Stone', 'natural', 42, { hardness: 1.2 });
+BLOCKS[B.EMBER_ASH] = D('Ember Ash', 'natural', 43, { hardness: 0.5 });
+BLOCKS[B.LAVA] = D('Lava', 'natural', 44, { solid: false, liquid: true, hardness: 0.1, glow: true });
+BLOCKS[B.EMBER_CRYSTAL] = D('Ember Crystal', 'special', 45, { solid: false, cross: true, opaque: false, hardness: 1.0, glow: true });
+BLOCKS[B.PORTAL] = D('Realm Portal', 'special', 46, { solid: false, opaque: false, hardness: 1.0, glow: true });
+
+// Highest allocated block id (multiplayer edit validation).
+export const MAX_BLOCK_ID = Math.max(...Object.keys(BLOCKS).map(Number));
 
 export const CATEGORIES = ['natural', 'building', 'decor', 'special'];
 

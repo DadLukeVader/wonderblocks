@@ -27,19 +27,26 @@
 - ✅ 30 craftable items, workbench gating
 - ✅ Creative mode toggle
 
-### Phase 4: Survival/Farming/Fishing/Cooking 🔄 IN PROGRESS
+### Phase 4: Survival/Farming/Fishing/Cooking ✅ COMPLETE
 - ✅ Health (20), hunger (20), fall damage, starvation, regen, respawn
 - ✅ Vitals HUD (hearts + drumsticks)
-- ⏳ Farming (crops, growth)
-- ⏳ Fishing (rod, catches)
-- ⏳ Cooking (furnace, recipes)
+- ✅ Farming: tilled soil (hoe on dirt/grass), wheat/carrot/potato crops, 4 growth stages (~30s each), harvest drops
+- ✅ Fishing: craftable rod, cast near water, 5-15s wait, catches raw fish/salmon/pufferfish
+- ✅ Cooking: craftable/placeable furnace, fuel (wood/planks), 10s smelts (cooked fish, baked potato, 3 wheat→bread)
+- ✅ Eating: right-click food to eat (raw=2, cooked=6 hunger); seeds/carrot/potato plant on tilled soil
+- ✅ Tests: farming.test.mjs (63 assertions), all suites pass
 
-### Phase 5: Animals/Pets/Breeding/Riding ⏳ PENDING
-- ✅ 13 tameable animals, feed-to-tame, pet following
-- ⏳ Breeding, baby animals, riding mounts
+### Phase 5: Animals/Pets/Breeding/Riding ✅ COMPLETE
+- ✅ 15 tameable animals (added horse + pig)
+- ✅ Breeding: feed two tamed same-species pets → baby (0.5x scale, grows in 5 min)
+- ✅ Riding: mount tamed horses/pigs, faster movement + higher jump
+- ✅ Pet collars (craftable, colored, persist in saves)
 
-### Phase 6: Monsters/Combat/Bosses ⏳ PENDING
-- ⏳ Hostile mobs, night spawns, AI, melee combat, bosses
+### Phase 6: Monsters/Combat/Bosses ✅ COMPLETE
+- ✅ 4 hostile monsters (gloomling, mossjaw, sparkbat, gloomlord boss)
+- ✅ Night spawning, chase AI, melee combat
+- ✅ Player weapon attacks, knockback, kill rewards (XP + toast)
+- ✅ Boss (gloomlord): rare, 100 HP, diamond/gold drops
 
 ### Phase 7: Villages/NPCs/Shops/Quests ⏳ PENDING
 - ✅ 8 quests (basic)

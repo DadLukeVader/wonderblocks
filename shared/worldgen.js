@@ -13,6 +13,13 @@ export const SEA_LEVEL = 20;
 export const CHUNK = 16;               // chunk footprint in blocks
 export const ENDLESS_WORLD = true;     // false restores the old finite-world behavior
 
+// ---- Phase 8: dimensions ----
+export const DIM = { OVERWORLD: 0, EMBER: 1, CLOUD: 2 };
+export const DIM_NAMES = ['Overworld', 'Ember Realm', 'Cloud Realm'];
+// seed offsets keep each dimension's noise fields independent
+const EMBER_XOR = 0xE8BE5, CLOUD_XOR = 0xC10D5;
+const EMBER_LAVA_LEVEL = 12;
+
 export const idx = (x, y, z) => (y * WORLD_Z + z) * WORLD_X + x;
 export const inBounds = (x, y, z) =>
   x >= 0 && x < WORLD_X && y >= 0 && y < WORLD_Y && z >= 0 && z < WORLD_Z;
@@ -282,10 +289,11 @@ function _buildOrigin(seed) {
 // Per-seed cache: canonical origin world + a noise instance for infinite queries.
 // Capped (LRU-ish: evict oldest) so memory stays bounded.
 const _seedCache = new Map();
+const _SEED_CACHE_CAP = 8; // origin + overworld/ember/cloud noise entries
 function _entry(seed) {
   let e = _seedCache.get(seed);
   if (!e) {
-    if (_seedCache.size >= 4) _seedCache.delete(_seedCache.keys().next().value);
+    if (_seedCache.size >= _SEED_CACHE_CAP) _seedCache.delete(_seedCache.keys().next().value);
     e = { world: _buildOrigin(seed), noise: makeNoise(seed) };
     _seedCache.set(seed, e);
   }
@@ -465,9 +473,114 @@ function _infBlock(seed, x, y, z) {
   return _blockWithTrunks(seed, x, y, z, _infHeight(seed, x, z), _scatterChunk(seed, cx, cz));
 }
 
+// ---------------------------------------------------------------------------
+// Phase 8: dimensions. Ember Realm (nether-like) and Cloud Realm (sky islands)
+// are fully procedural with their own seed offsets — no origin region.
+// ---------------------------------------------------------------------------
+
+// Ember Realm: dark red rolling hills, ash flats, lava lakes, ember crystals.
+function _emberHeight(seed, x, z) {
+  const { fbm } = _noiseFor((seed ^ EMBER_XOR) | 0);
+  const h = 16 + fbm(x * 0.02 + 3, z * 0.02 + 9) * 10 - 2;
+  return Math.max(4, Math.min(34, Math.round(h)));
+}
+function _emberBlock(seed, x, y, z, h) {
+  const es = (seed ^ EMBER_XOR) | 0;
+  if (y === 0) return B.BEDROCK;
+  if (y <= h) {
+    if (y < h - 2) return B.EMBER_STONE;
+    return B.EMBER_ASH;
+  }
+  // lava lakes fill low basins
+  if (h < EMBER_LAVA_LEVEL && y <= EMBER_LAVA_LEVEL) return B.LAVA;
+  // ember crystals sprout on the ash
+  if (y === h + 1 && _hashUnit(es ^ 0xC12A1, x, z) < 0.025) return B.EMBER_CRYSTAL;
+  return B.AIR;
+}
+
+// Cloud Realm: floating islands of cloud with snowy pastel tops. Void below.
+function _cloudChunkIslands(seed, cx, cz) {
+  // islands OWNED by chunk (cx,cz) — deterministic per chunk
+  const cs = (seed ^ CLOUD_XOR) | 0;
+  const rng = mulberry32(hash32(cs, cx, cz));
+  const n = 1 + ((rng() * 2) | 0);
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    out.push({
+      ix: cx * CHUNK + 2 + ((rng() * 12) | 0),
+      iz: cz * CHUNK + 2 + ((rng() * 12) | 0),
+      r: 4 + ((rng() * 4) | 0),          // radius 4..7
+      top: 34 + ((rng() * 10) | 0),      // top y 34..43
+    });
+  }
+  return out;
+}
+function _cloudIslands(seed, cx, cz) {
+  // islands overlapping chunk (cx,cz): gather the 3x3 neighborhood so island
+  // edges crossing chunk borders render identically from either side
+  const out = [];
+  for (let ox = -1; ox <= 1; ox++)
+    for (let oz = -1; oz <= 1; oz++)
+      out.push(..._cloudChunkIslands(seed, cx + ox, cz + oz));
+  return out;
+}
+// 0 = air, 1 = cloud body, 2 = surface (pastel top)
+function _cloudSolid(x, y, z, islands) {
+  for (const isl of islands) {
+    const dx = x - isl.ix, dz = z - isl.iz;
+    const hd2 = (dx * dx + dz * dz) / (isl.r * isl.r);
+    if (hd2 >= 1) continue;
+    const dy = y - isl.top;
+    const v = hd2 + (dy > 0 ? dy * dy * 4 : dy * dy / 9);
+    if (v >= 1) continue;
+    const dy1 = dy + 1;
+    const va = hd2 + (dy1 > 0 ? dy1 * dy1 * 4 : dy1 * dy1 / 9);
+    return va >= 1 ? 2 : 1;
+  }
+  return 0;
+}
+function _cloudBlockAt(seed, x, y, z, islands) {
+  const s = _cloudSolid(x, y, z, islands);
+  if (s === 2) return B.SNOW;
+  if (s === 1) return B.CLOUD;
+  // flowers on island tops
+  if (_cloudSolid(x, y - 1, z, islands) === 2) {
+    const r = _hashUnit((seed ^ CLOUD_XOR ^ 0xF10E2) | 0, x, z);
+    if (r < 0.03) return B.FLOWER_RED;
+    if (r < 0.06) return B.FLOWER_YELLOW;
+    if (r < 0.09) return B.FLOWER_BLUE;
+  }
+  return B.AIR;
+}
+
+// Safe spawn point per dimension (client lifts out of solid as a failsafe).
+export function getDimensionSpawn(seed, dim) {
+  if (dim === DIM.EMBER) {
+    const h = _emberHeight(seed, 8, 8);
+    return [8.5, Math.max(h, EMBER_LAVA_LEVEL) + 1.01, 8.5];
+  }
+  if (dim === DIM.CLOUD) {
+    const isl = _cloudChunkIslands(seed, 0, 0)[0];
+    if (isl) return [isl.ix + 0.5, isl.top + 1.01, isl.iz + 0.5];
+    return [8.5, 40.01, 8.5];
+  }
+  return getSpawn();
+}
+
 // Base terrain BEFORE player edits. PURE for any integer coords.
-export function getBaseBlock(seed, x, y, z) {
+export function getBaseBlock(seed, x, y, z, dim = DIM.OVERWORLD) {
   x = Math.floor(x); y = Math.floor(y); z = Math.floor(z);
+  if (dim === DIM.CLOUD) {
+    // no bedrock floor — void below the islands
+    if (y < 0 || y >= WORLD_Y) return B.AIR;
+    const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK);
+    return _cloudBlockAt(seed, x, y, z, _cloudIslands(seed, cx, cz));
+  }
+  if (dim === DIM.EMBER) {
+    if (y < 0) return B.BEDROCK;
+    if (y >= WORLD_Y) return B.AIR;
+    return _emberBlock(seed, x, y, z, _emberHeight(seed, x, z));
+  }
   if (y < 0) return B.BEDROCK;
   if (y >= WORLD_Y) return B.AIR;
   const inOrigin = x >= 0 && x < WORLD_X && z >= 0 && z < WORLD_Z;
@@ -480,19 +593,42 @@ export function getBaseBlock(seed, x, y, z) {
 }
 
 // Block with player edits overlaid. edits: Map("x,y,z" -> [x, y, z, blockId]).
-export function getWorldBlock(seed, edits, x, y, z) {
+// The client keys edits per-dimension; the server passes overworld-only edits.
+export function getWorldBlock(seed, edits, x, y, z, dim = DIM.OVERWORLD) {
   if (edits) {
     const e = edits.get(x + ',' + y + ',' + z);
     if (e) return e[3];
   }
-  return getBaseBlock(seed, x, y, z);
+  return getBaseBlock(seed, x, y, z, dim);
 }
 
 // One chunk of the world: Uint8Array(CHUNK*WORLD_Y*CHUNK), local index
 // (y*16+z)*16+x with local coords 0..15. PURE: same (seed,cx,cz) always gives
 // identical bytes, regardless of call order.
-export function buildChunkData(seed, cx, cz) {
+export function buildChunkData(seed, cx, cz, dim = DIM.OVERWORLD) {
   const out = new Uint8Array(CHUNK * WORLD_Y * CHUNK);
+  if (dim === DIM.EMBER) {
+    for (let lz = 0; lz < CHUNK; lz++) {
+      for (let lx = 0; lx < CHUNK; lx++) {
+        const x = cx * CHUNK + lx, z = cz * CHUNK + lz;
+        const h = _emberHeight(seed, x, z);
+        for (let ly = 0; ly < WORLD_Y; ly++)
+          out[(ly * CHUNK + lz) * CHUNK + lx] = _emberBlock(seed, x, ly, z, h);
+      }
+    }
+    return out;
+  }
+  if (dim === DIM.CLOUD) {
+    const islands = _cloudIslands(seed, cx, cz);
+    for (let lz = 0; lz < CHUNK; lz++) {
+      for (let lx = 0; lx < CHUNK; lx++) {
+        const x = cx * CHUNK + lx, z = cz * CHUNK + lz;
+        for (let ly = 0; ly < WORLD_Y; ly++)
+          out[(ly * CHUNK + lz) * CHUNK + lx] = _cloudBlockAt(seed, x, ly, z, islands);
+      }
+    }
+    return out;
+  }
   const inOrigin = cx >= 0 && cx < 8 && cz >= 0 && cz < 8;
   if (inOrigin) {
     const src = _entry(seed).world;

@@ -191,6 +191,24 @@ function drawAtlas() {
   g.fillStyle = '#8a5a32'; g.fillRect(0, 0, T, 5);
   g.fillStyle = '#9d7bff'; g.fillRect(6, 12, 8, 3); g.fillRect(8, 8, 3, 12);
   g.fillStyle = '#e03131'; g.fillRect(20, 14, 6, 6); done();
+  // 42 ember_stone (Phase 8): dark red volcanic rock
+  tile(42); fill('#6b2a1e'); speck(46, ['#8b3a28', '#541e16', '#a04a34'], 2);
+  g.strokeStyle = '#541e16'; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(4, 20); g.lineTo(14, 24); g.lineTo(22, 19); g.stroke(); done();
+  // 43 ember_ash (Phase 8): dark gray ash
+  tile(43); fill('#4a4048'); speck(52, ['#3a323a', '#5c525a', '#302a30'], 2); done();
+  // 44 lava (Phase 8): bright molten orange with yellow blobs
+  tile(44); fill('#ff7b1c'); speck(30, ['#ff9d2e'], 3);
+  dot(10, 10, 4, '#ffd23e'); dot(22, 20, 5, '#ffd23e'); dot(14, 26, 3, '#ffe27a'); done();
+  // 45 ember_crystal (Phase 8): glowing orange crystals on dark rock
+  tile(45); fill('#2a0f0a'); speck(16, ['#1e0a07'], 2);
+  const ecrys = (x, h, c1, c2) => { g.fillStyle = c1; g.beginPath(); g.moveTo(x, T); g.lineTo(x, T - h); g.lineTo(x + 5, T - h - 6); g.lineTo(x + 10, T - h); g.lineTo(x + 10, T); g.fill(); g.fillStyle = c2; g.fillRect(x + 4, T - h, 2, h); };
+  ecrys(3, 20, '#ff8c28', '#ffd282'); ecrys(15, 26, '#ff641e', '#ffbe6e'); ecrys(24, 15, '#e65a28', '#ffaa78');
+  dot(19, 8, 1.6, '#fff'); done();
+  // 46 portal (Phase 8): swirling purple
+  tile(46); fill('#3c146e'); speck(40, ['#7b2ff7', '#5a1ea0', '#9660ff'], 3);
+  g.strokeStyle = 'rgba(200,160,255,0.8)'; g.lineWidth = 2;
+  for (let x = 2; x < T; x += 6) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x + 3, T); g.stroke(); } done();
 
   const tex = new THREE.CanvasTexture(cv);
   tex.magFilter = THREE.NearestFilter;

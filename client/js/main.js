@@ -1,8 +1,8 @@
 // WonderBlocks main: boot, game loop, building, multiplayer glue, saving.
 import * as THREE from 'three';
 import { B, blockDef, isBreakable } from 'wb-shared/blocks.js?v=19';
-import { getSpawn, biomeNameAt } from 'wb-shared/worldgen.js?v=18';
-import { MSG, ROLES, makeRoomCode } from 'wb-shared/protocol.js?v=18';
+import { getSpawn, biomeNameAt } from 'wb-shared/worldgen.js?v=19';
+import { MSG, ROLES, makeRoomCode } from 'wb-shared/protocol.js?v=19';
 import { World } from './world.js?v=18';
 import { loadAtlas } from './textures.js?v=18';
 import { loadFaces } from './character.js?v=18';

@@ -7,13 +7,13 @@
 // have their meshes disposed and are dropped from the cache. Player edits
 // overlay base terrain and are re-applied if a chunk regenerates after eviction.
 import * as THREE from 'three';
-import { B, blockDef } from 'wb-shared/blocks.js?v=18';
-import { CHUNK, WORLD_Y, ENDLESS_WORLD, buildChunkData } from 'wb-shared/worldgen.js?v=18';
+import { B, blockDef } from 'wb-shared/blocks.js?v=19';
+import { CHUNK, WORLD_Y, ENDLESS_WORLD, DIM, buildChunkData } from 'wb-shared/worldgen.js?v=19';
 import { getAtlas, tileUV, makeWaterTexture } from './textures.js?v=18';
 
 export { CHUNK, WORLD_Y };
 
-const HIDE_SAME = new Set([B.GLASS, B.LEAVES, B.ICE, B.CLOUD, B.BERRY_BUSH, B.PALM_LEAVES]);
+const HIDE_SAME = new Set([B.GLASS, B.LEAVES, B.ICE, B.CLOUD, B.BERRY_BUSH, B.PALM_LEAVES, B.PORTAL]);
 const SHORE = new Set([B.SAND, B.GRASS, B.DIRT, B.STONE, B.SNOW]); // shoreline-foam blocks
 const FINITE_MAX = 7; // !ENDLESS_WORLD: only chunks cx,cz in [0,7] ever exist (legacy 128x128 world)
 
@@ -54,9 +54,10 @@ export class World {
     this.scene = scene;
     this.seed = seed;
     this.atlas = atlas || getAtlas();
+    this.dimension = DIM.OVERWORLD; // Phase 8: 0=overworld, 1=ember, 2=cloud
     this.chunkCache = new Map(); // "cx,cz" -> Uint8Array(16*64*16)
-    this.edits = new Map();      // "x,y,z" -> [x,y,z,b] (overlay on generated terrain)
-    this._editChunks = new Map();// "cx,cz" -> Set("x,y,z") (re-apply edits after eviction)
+    this.edits = new Map();      // "dim:x,y,z" -> [x,y,z,b,dim] (overlay on generated terrain)
+    this._editChunks = new Map();// "dim:cx,cz" -> Set("dim:x,y,z") (re-apply edits after eviction)
     this.chunks = new Map();     // "cx,cz" -> {opaque,cutout,water} meshes
     this.dirty = new Set();      // "cx,cz" awaiting remesh
 
@@ -110,12 +111,28 @@ export class World {
     return ENDLESS_WORLD || (cx >= 0 && cz >= 0 && cx <= FINITE_MAX && cz <= FINITE_MAX);
   }
 
+  // Phase 8: switch dimensions. Clears all loaded chunks/meshes; edits are
+  // kept (keyed per-dimension) and re-applied when chunks regenerate.
+  setDimension(dim) {
+    if (this.dimension === dim) return;
+    this.dimension = dim;
+    for (const key of [...this.chunks.keys()]) {
+      const [cx, cz] = key.split(',').map(Number);
+      this.unloadChunk(cx, cz);
+    }
+    this.chunkCache.clear();
+    this.dirty.clear();
+  }
+
+  _ek(x, y, z) { return this.dimension + ':' + x + ',' + y + ',' + z; }
+  _ck(cx, cz) { return this.dimension + ':' + cx + ',' + cz; }
+
   getChunkData(cx, cz) {
     if (!this._chunkAllowed(cx, cz)) return null;
     const key = cx + ',' + cz;
     let d = this.chunkCache.get(key);
     if (!d) {
-      d = buildChunkData(this.seed, cx, cz);
+      d = buildChunkData(this.seed, cx, cz, this.dimension);
       this._applyEditsToChunk(cx, cz, d);
       this.chunkCache.set(key, d);
     }
@@ -123,7 +140,7 @@ export class World {
   }
 
   _applyEditsToChunk(cx, cz, d) {
-    const s = this._editChunks.get(cx + ',' + cz);
+    const s = this._editChunks.get(this._ck(cx, cz));
     if (!s) return;
     for (const ek of s) {
       const e = this.edits.get(ek);
@@ -132,9 +149,10 @@ export class World {
   }
 
   get(x, y, z) {
-    if (y < 0) return B.BEDROCK;
+    // Cloud Realm has no floor — the void below is real (falling = respawn).
+    if (y < 0) return this.dimension === DIM.CLOUD ? B.AIR : B.BEDROCK;
     if (y >= WORLD_Y) return B.AIR;
-    const e = this.edits.get(x + ',' + y + ',' + z);
+    const e = this.edits.get(this._ek(x, y, z));
     if (e !== undefined) return e[3];
     const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK);
     const d = this.getChunkData(cx, cz);
@@ -143,24 +161,32 @@ export class World {
   }
 
   set(x, y, z, b) {
+    return this.setRaw(x, y, z, b, this.dimension);
+  }
+
+  // Record an edit, optionally for a dimension other than the current one
+  // (used when restoring saves). Only marks meshes dirty for the live dimension.
+  setRaw(x, y, z, b, dim) {
     if (y < 0 || y >= WORLD_Y) return false;
-    if (this.get(x, y, z) === b) return false;
-    const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK);
-    const d = this.getChunkData(cx, cz);
-    if (!d) return false;
-    const lx = x - cx * CHUNK, lz = z - cz * CHUNK;
-    d[cidx(lx, y, lz)] = b;
-    const ek = x + ',' + y + ',' + z;
-    this.edits.set(ek, [x, y, z, b]);
-    const ck = cx + ',' + cz;
+    const ek = dim + ':' + x + ',' + y + ',' + z;
+    const prev = this.edits.get(ek);
+    if (prev && prev[3] === b) return false;
+    this.edits.set(ek, [x, y, z, b, dim]);
+    const ck = dim + ':' + Math.floor(x / CHUNK) + ',' + Math.floor(z / CHUNK);
     let s = this._editChunks.get(ck);
     if (!s) { s = new Set(); this._editChunks.set(ck, s); }
     s.add(ek);
-    this._markDirty(cx, cz);
-    if (lx === 0) this._markDirty(cx - 1, cz);
-    if (lx === CHUNK - 1) this._markDirty(cx + 1, cz);
-    if (lz === 0) this._markDirty(cx, cz - 1);
-    if (lz === CHUNK - 1) this._markDirty(cx, cz + 1);
+    if (dim === this.dimension) {
+      const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK);
+      const lx = x - cx * CHUNK, lz = z - cz * CHUNK;
+      const d = this.chunkCache.get(cx + ',' + cz);
+      if (d) d[cidx(lx, y, lz)] = b;
+      this._markDirty(cx, cz);
+      if (lx === 0) this._markDirty(cx - 1, cz);
+      if (lx === CHUNK - 1) this._markDirty(cx + 1, cz);
+      if (lz === 0) this._markDirty(cx, cz - 1);
+      if (lz === CHUNK - 1) this._markDirty(cx, cz + 1);
+    }
     return true;
   }
 
@@ -171,6 +197,7 @@ export class World {
   }
 
   // All recorded edits, for saving (localStorage) — single source of truth.
+  // Values are [x, y, z, blockId, dim]; old saves with 4 elements load as dim 0.
   editsList() { return [...this.edits.values()]; }
 
   topY(x, z) {
