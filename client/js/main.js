@@ -589,6 +589,12 @@ class Game {
     const mv = this.input.moveVec();
     if (this.input.enabled) {
       this.player.update(dt, { f: mv.f, s: mv.s, jump: this.input.jumpHeld, sprint: this.input.sprintKey || (this.input.joy.active && Math.hypot(mv.f, mv.s) > 0.92) });
+      // Safety net: if the player somehow falls through the world, respawn.
+      if (this.player.pos.y < 10) {
+        const s = getSpawn();
+        this.player.pos.set(s[0], s[1], s[2]);
+        this.player.vel.set(0, 0, 0);
+      }
       if (Math.hypot(mv.f, mv.s) > 0.3 && this.player.speed2d > 1) this.tutEvent('move');
       if (this.input.jumpHeld && this.player.vel.y > 3) this.tutEvent('jump');
     }
