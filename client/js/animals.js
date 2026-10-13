@@ -237,6 +237,8 @@ export class Critter {
     this.g = m.g;
     // model flags (hop/fly/...) + pure data (favoriteFood, feedsToTame, ...)
     this.def = { ...m, ...ANIMAL_DEFS[kind] };
+    // ANIMAL_DEFS has wings: true as a flag — restore the actual wing meshes
+    if (m.wings) this.def.wings = m.wings;
     delete this.def.g; delete this.def.kind;
     this.g.position.set(x, y, z);
     scene.add(this.g);
@@ -334,9 +336,10 @@ export class Critter {
     this.phase += dt * 6;
     if (this.petOf) this.updatePet(dt, world, playerPos);
     else this.updateWild(dt, world);
-    if (this.def.wings) { // wing flap
+    if (this.def.wings && Array.isArray(this.def.wings)) { // wing flap
       const f = Math.sin(this.phase * 3) * 0.7;
-      this.def.wings[0].rotation.y = f; this.def.wings[1].rotation.y = -f;
+      if (this.def.wings[0]) this.def.wings[0].rotation.y = f;
+      if (this.def.wings[1]) this.def.wings[1].rotation.y = -f;
     }
     if (this.head && this.def.graze) { // periodic head-dip grazing (deer, sheep)
       this.head.rotation.x = -Math.abs(Math.sin(this.phase * 0.35)) * 0.6;
