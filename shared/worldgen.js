@@ -291,7 +291,7 @@ export function buildWorld(seed) {
 }
 
 export function getSpawn() {
-  return [64.5, 24.5, 58.5]; // south of the well, on the path
+  return [64.5, 34.5, 58.5]; // south of the well, on the path (raised 10 to clear terrain)
 }
 
 export function biomeNameAt(x, z, seed = 0) {
