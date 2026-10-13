@@ -1,6 +1,6 @@
 // WonderBlocks inventory: block counts, 9-slot hotbar, starter kit.
-import { B, BLOCKS, CATEGORIES, blockDef, STARTER_KIT } from 'wb-shared/blocks.js?v=11';
-import { isItem, itemDef } from 'wb-shared/items.js?v=11';
+import { B, BLOCKS, CATEGORIES, blockDef, STARTER_KIT } from 'wb-shared/blocks.js?v=12';
+import { isItem, itemDef } from 'wb-shared/items.js?v=12';
 
 const DEFAULT_HOTBAR = [B.PLANKS, B.WOOD, B.GLASS, B.WINDOW, B.ROOF, B.DOOR, B.LANTERN, B.FLOWER_RED, B.GRASS];
 

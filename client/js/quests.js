@@ -1,5 +1,5 @@
 // WonderBlocks quests: optional challenges with XP/coin rewards.
-import { B } from 'wb-shared/blocks.js?v=11';
+import { B } from 'wb-shared/blocks.js?v=12';
 
 export const QUESTS = [
   { id: 'wood20', text: 'Collect 20 Wood', target: 20, ev: 'break', match: B.WOOD, reward: { coins: 15, xp: 20 } },
