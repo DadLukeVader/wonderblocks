@@ -1,7 +1,7 @@
 // WonderBlocks player: AABB voxel physics, swimming, third-person orbit camera.
 import * as THREE from 'three';
-import { B, isSolid } from 'wb-shared/blocks.js?v=14';
-import { buildCharacter, animateCharacter } from './character.js?v=14';
+import { B, isSolid } from 'wb-shared/blocks.js?v=15';
+import { buildCharacter, animateCharacter } from './character.js?v=15';
 
 const PW = 0.3, PH = 1.8, EYE = 1.62;
 
@@ -116,9 +116,9 @@ export class Player {
     this.pos.y += this.vel.y * dt;
     this.collideAxis(1);
 
-    // world borders
-    this.pos.x = Math.max(1.5, Math.min(126.5, this.pos.x));
-    this.pos.z = Math.max(1.5, Math.min(126.5, this.pos.z));
+    // world borders (endless world — no x/z clamp, just a sanity cap)
+    this.pos.x = Math.max(-900000, Math.min(900000, this.pos.x));
+    this.pos.z = Math.max(-900000, Math.min(900000, this.pos.z));
     if (this.pos.y < 1) { this.pos.y = 1; this.vel.y = 0; this.onGround = true; }
 
     this.speed2d = Math.hypot(this.vel.x, this.vel.z);

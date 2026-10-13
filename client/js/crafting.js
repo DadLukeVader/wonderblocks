@@ -9,9 +9,9 @@
 // Inventory mutation is client-side (inventories are local by architecture);
 // onCrafted lets main.js announce the craft to multiplayer.
 
-import { ITEMS, ITEM_CATS, itemDef, canCraft, craftItem, ingredientName } from 'wb-shared/items.js?v=14';
-import { blockDef } from 'wb-shared/blocks.js?v=14';
-import { loadItemIcons } from './itemArt.js?v=14';
+import { ITEMS, ITEM_CATS, itemDef, canCraft, craftItem, ingredientName } from 'wb-shared/items.js?v=15';
+import { blockDef } from 'wb-shared/blocks.js?v=15';
+import { loadItemIcons } from './itemArt.js?v=15';
 
 const TOOL_BLURB = { pickaxe: 'stone, ore & brick', axe: 'wood & planks', shovel: 'dirt, sand & snow' };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -53,6 +53,10 @@ export class CraftingUI {
     this.refresh(inv);
     p.classList.remove('hidden');
   }
+  hide() {
+    const p = document.getElementById('crafting');
+    if (p) p.classList.add('hidden');
+  }
 
   // Re-render when the inventory changes while the panel is open
   // (chain onto the existing onChange handler; never clobber it).
@@ -73,12 +77,14 @@ export class CraftingUI {
       .filter(it => it.kind === this.tab)
       .map(it => this.rowHTML(inv, it, nearWB))
       .join('');
-    p.innerHTML = `<h3>🛠️ Crafting</h3>
+    p.innerHTML = `<h3>🛠️ Crafting <button class="xbtn" id="craft_x" title="Close">✕</button></h3>
       <div class="cats">${ITEM_CATS.map(([k, label]) =>
         `<button class="cat ${k === this.tab ? 'sel' : ''}" data-t="${k}">${label}</button>`).join('')}</div>
       <div class="crows">${rows}</div>
       <p class="note">🔨 = needs a workbench placed nearby · tap ➕ to wield an item from your hotbar.</p>`;
     p.querySelectorAll('.cat').forEach(b => b.onclick = () => { this.tab = b.dataset.t; this.refresh(inv); });
+    const xbtn = p.querySelector('#craft_x');
+    if (xbtn) xbtn.onclick = () => this.hide();
     p.querySelectorAll('[data-craft]').forEach(b => b.onclick = () => this.craft(+b.dataset.craft));
     p.querySelectorAll('[data-hotbar]').forEach(b => b.onclick = () => {
       inv.setHotbarSlot(inv.sel, +b.dataset.hotbar);

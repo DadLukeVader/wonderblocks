@@ -1,8 +1,8 @@
 // WonderBlocks UI: menus, HUD, inventory, chat, tutorial, touch controls.
-import { B, BLOCKS, CATEGORIES, blockDef } from 'wb-shared/blocks.js?v=14';
-import { FOODS, foodDef } from 'wb-shared/foods.js?v=14';
-import { ITEMS, isItem, itemDef, totalDefense } from 'wb-shared/items.js?v=14';
-import { SKIN_TONES, HAIR_STYLES, HAIR_COLORS, SHIRT_COLORS, PANTS_COLORS } from './character.js?v=14';
+import { B, BLOCKS, CATEGORIES, blockDef } from 'wb-shared/blocks.js?v=15';
+import { FOODS, foodDef } from 'wb-shared/foods.js?v=15';
+import { ITEMS, isItem, itemDef, totalDefense } from 'wb-shared/items.js?v=15';
+import { SKIN_TONES, HAIR_STYLES, HAIR_COLORS, SHIRT_COLORS, PANTS_COLORS } from './character.js?v=15';
 
 const SWATCH = {
   1: '#79c95c', 2: '#9a6a44', 3: '#b9b9c4', 4: '#f0dfa4', 5: '#8a5a32', 6: '#58b368',
@@ -495,6 +495,7 @@ export class UI {
         <button id="tb_jump">⬆️<small>Jump</small></button>
         <button id="tb_break">⛏️<small>Break</small></button>
         <button id="tb_place">🧱<small>Place</small></button>
+        <button id="tb_invert">🔄<small>Invert</small></button>
       </div>
     </div>`);
     const joy = el('joy'), knob = el('knob');
@@ -534,5 +535,10 @@ export class UI {
     hold('tb_jump', () => this.input.jumpHeld = true, () => this.input.jumpHeld = false);
     hold('tb_break', () => { this.input.breakHeld = true; this.input.breakEdge = true; }, () => this.input.breakHeld = false);
     hold('tb_place', () => { this.input.placeEdge = true; });
+    const invBtn = document.getElementById('tb_invert');
+    if (invBtn) invBtn.onclick = () => {
+      const v = !this.h.invertLook;
+      this.h.onToggleInvert(v);
+    };
   }
 }
