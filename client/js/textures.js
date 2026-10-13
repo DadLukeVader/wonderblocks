@@ -253,3 +253,42 @@ export function tileUV(i) {
   const v1 = 1 - row * s - inset, v0 = 1 - (row + 1) * s + inset;
   return [u0, v0, u1, v1];
 }
+
+// Standalone animated water texture: 4 frames of soft blue wave noise with
+// drifting highlights, redrawn into a single 32x32 canvas on a timer.
+// Water quads use full-texture UVs so this texture is independent of the atlas
+// (atlas frame swaps for glow/crystal/rainbow never touch it).
+// Returns { tex, tick(t) } — call tick(seconds) once per frame.
+export function makeWaterTexture() {
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = T;
+  const g = cv.getContext('2d');
+  const tex = toTex(cv);
+  let frame = -1;
+  function draw(f) {
+    g.fillStyle = '#3fa7e8'; g.fillRect(0, 0, T, T);
+    // soft wave noise: two phase-shifted sine fields
+    for (let y = 0; y < T; y++) {
+      for (let x = 0; x < T; x += 2) {
+        const w = Math.sin((x + f * 8) * 0.45) * 0.5
+                + Math.sin((y - f * 5) * 0.6 + x * 0.15) * 0.5;
+        if (w > 0.55) { g.fillStyle = 'rgba(120,205,250,0.55)'; g.fillRect(x, y, 2, 1); }
+        else if (w < -0.6) { g.fillStyle = 'rgba(38,125,190,0.5)'; g.fillRect(x, y, 2, 1); }
+      }
+    }
+    // drifting white highlight dashes
+    g.fillStyle = 'rgba(255,255,255,0.65)';
+    for (let i = 0; i < 4; i++) {
+      const hx = (i * 11 + f * 7) % 28, hy = (i * 13 + f * 5) % 28;
+      g.fillRect(hx, hy, 5, 2);
+    }
+  }
+  draw(0);
+  return {
+    tex,
+    tick(t) {
+      const f = Math.floor(t / 0.55) % 4;
+      if (f !== frame) { frame = f; draw(f); tex.needsUpdate = true; }
+    },
+  };
+}

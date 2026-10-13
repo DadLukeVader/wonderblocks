@@ -12,9 +12,19 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer, WebSocket } from 'ws';
-import { buildWorld, idx, inBounds, getSpawn } from '../shared/worldgen.js';
+import { getWorldBlock, getSpawn, WORLD_Y } from '../shared/worldgen.js';
 import { MSG, ROLES, CLAIM_RADIUS, validateEdit } from '../shared/protocol.js';
 import { RECIPES, itemDef } from '../shared/items.js';
+import { B } from '../shared/blocks.js';
+
+// Endless-world support (contract confirmed): getWorldBlock(seed, edits, x, y, z)
+// reads the edits overlay on deterministic base terrain, unbounded x/z.
+const COORD_CAP = 1000000; // sanity cap for endless x/z (|x|,|z| <= 1e6)
+
+// Read one block from a room's world: the edits overlay on top of base terrain.
+function roomBlock(room, x, y, z) {
+  return getWorldBlock(room.seed, room.edits, x, y, z);
+}
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(HERE, '..');
@@ -99,8 +109,11 @@ export function startServer({ port = 8080, dataDir = './wonderblocks-data' } = {
   const DATA_DIR = path.resolve(dataDir);
 
   // Rooms live only in memory while the server runs; saves live on disk.
-  // room = { code, seed, world:Uint8Array, players:Map, roles:{}, clientIds:{},
-  //          claims:[], settings:{}, edits:Map, dirty, emptyTimer }
+  // room = { code, seed, players:Map, roles:{}, clientIds:{}, claims:[],
+  //          settings:{}, edits:Map, dirty, emptyTimer }
+  // edits: Map "x,y,z" -> [x,y,z,b] (the only persisted world state; base
+  // terrain is regenerated deterministically from the seed via roomBlock).
+  // LEGACY (pre-refactor worldgen): room also carries world:Uint8Array.
   const rooms = new Map();
 
   const savePath = code => path.join(DATA_DIR, 'wonderblocks-data', `${code}.json`);
@@ -141,9 +154,8 @@ export function startServer({ port = 8080, dataDir = './wonderblocks-data' } = {
     const saved = loadRoom(code);
     let seed = (Math.random() * 2 ** 32) >>> 0; // unsigned, so it round-trips through JSON saves identically
     if (saved && Number.isInteger(saved.seed)) seed = saved.seed >>> 0;
-    const world = buildWorld(seed);
     const room = {
-      code, seed, world,
+      code, seed,
       players: new Map(),
       roles: {}, clientIds: {}, claims: [], settings: {},
       edits: new Map(),
@@ -159,9 +171,13 @@ export function startServer({ port = 8080, dataDir = './wonderblocks-data' } = {
         for (const e of saved.edits) {
           if (Array.isArray(e) && e.length === 4) {
             const [x, y, z, b] = e;
-            if (Number.isInteger(x) && Number.isInteger(y) && Number.isInteger(z) &&
-                Number.isInteger(b) && inBounds(x, y, z)) {
-              world[idx(x, y, z)] = b;
+            // Same validation as live edits: endless rooms accept any sane coords;
+            // the overlay Map is the only persisted world state.
+            const ok = Number.isInteger(x) && Number.isInteger(y) && Number.isInteger(z) &&
+              Number.isInteger(b) && b >= 0 && b <= B.WORKBENCH &&
+              y >= 0 && y < WORLD_Y &&
+              Math.abs(x) <= COORD_CAP && Math.abs(z) <= COORD_CAP;
+            if (ok) {
               room.edits.set(`${x},${y},${z}`, [x, y, z, b]);
             }
           }
@@ -271,9 +287,8 @@ export function startServer({ port = 8080, dataDir = './wonderblocks-data' } = {
     if (!p) return;
     const { x, y, z, b } = msg;
     const problem = validateEdit({ x, y, z, b }, p.id, room.roles, room.claims,
-      (gx, gy, gz) => room.world[idx(gx, gy, gz)]);
+      (gx, gy, gz) => roomBlock(room, gx, gy, gz));
     if (problem) return sendError(ws, problem);
-    room.world[idx(x, y, z)] = b;
     room.edits.set(`${x},${y},${z}`, [x, y, z, b]);
     room.dirty = true;
     broadcast(room, { t: MSG.EDIT, x, y, z, b, by: p.id });
@@ -316,7 +331,7 @@ export function startServer({ port = 8080, dataDir = './wonderblocks-data' } = {
     if (!p) return;
     const x = Math.round(Number(msg.x));
     const z = Math.round(Number(msg.z));
-    if (!Number.isFinite(x) || !Number.isFinite(z) || x < 0 || x >= 128 || z < 0 || z >= 128) {
+    if (!Number.isFinite(x) || !Number.isFinite(z) || Math.abs(x) > COORD_CAP || Math.abs(z) > COORD_CAP) {
       return sendError(ws, 'Bad claim location.');
     }
     if (room.claims.some(c => c.ownerId === p.id)) {

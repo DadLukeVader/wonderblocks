@@ -45,7 +45,6 @@ class Game {
     this.remotes = new Map();
     this.isMulti = false;
     this.myRole = ROLES.BUILDER;
-    this.edits = [];
     this.settings = { volume: 0.5, unlimited: false };
     this.tutorial = -1;
     this.pet = null;
@@ -133,7 +132,7 @@ class Game {
     this.world = new World(this.scene, seed, atl.a);
     this.atlasB = atl.b;
     this._atlasT = 0; this._atlasFrame = 0;
-    await this.world.buildAll(p => this.ui.loading(0.05 + p * 0.85, 'Growing the world… 🌱'));
+    await this.world.bootAround(spawnPos[0], spawnPos[2], p => this.ui.loading(0.05 + p * 0.85, 'Growing the world… 🌱'));
     const faceTex = this.faceTexs ? this.faceTexs[(Math.random() * this.faceTexs.length) | 0] : null;
     this.player = new Player(this.scene, this.world, this.ui.char, spawnPos, faceTex);
     this.critters = new CritterManager(this.scene, this.world);
@@ -281,7 +280,7 @@ class Game {
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
         seed: this.world.seed,
-        edits: this.edits,
+        edits: this.world ? this.world.editsList() : [],
         player: [this.player.pos.x, this.player.pos.y, this.player.pos.z],
         inv: this.inv.serialize(),
         quests: this.quests.serialize(),
@@ -423,8 +422,8 @@ class Game {
 
   // ---------------- block interaction ----------------
   applyEdit(x, y, z, b) {
+    // world.set records the edit in world.edits (the save/load source of truth)
     if (!this.world.set(x, y, z, b)) return false;
-    this.edits.push([x, y, z, b]);
     if (this.isMulti) this.net.send({ t: MSG.EDIT, x, y, z, b });
     return true;
   }
@@ -569,7 +568,8 @@ class Game {
     }
     this.player.updateCamera(this.camera);
     if (this.started) this.updateTargeting(dt);
-    this.world.update();
+    this.world.setTime(now / 1000); // water animation clock (uTime + texture frames)
+    this.world.update(this.player.pos.x, this.player.pos.z);
     this.critters.update(dt, this.player.pos);
     for (const [, r] of this.remotes) r.update(dt);
 
