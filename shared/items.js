@@ -1,8 +1,10 @@
 // WonderBlocks shared item registry: craftable tools, weapons and armor.
 //
-// Item ids 100-129 (blocks are 0-40; food items 130-139 belong to another agent).
-// Torch (108) and Workbench (109) are "utility items": crafting them yields the
-// placeable blocks B.TORCH (39) / B.WORKBENCH (40) instead of an inventory item.
+// Item ids 100-129 (blocks are 0-94; food items 130-143 belong to the animals
+// subsystem + Phase 4 cooking; 140, 144+ are pet accessories / utility tools).
+// Torch (108), Workbench (109) and Furnace (146) are "utility items": crafting
+// them yields the placeable blocks B.TORCH (39) / B.WORKBENCH (40) / B.FURNACE (82)
+// instead of an inventory item.
 //
 // Pure ES module: no DOM, no three.js — safe to import on client and server.
 // RECIPES is DERIVED from ITEMS (single source of truth): each ITEMS entry
@@ -116,6 +118,26 @@ export const ITEMS = {
   129: { name: 'Crystal Boots', kind: 'armor', slot: 'feet', tier: 'crystal', defense: 4,
     recipe: { [B.CRYSTAL]: 2, [B.GOLD]: 2 }, needsWorkbench: true,
     icon: '🥾', color: '#b197fc', desc: 'Floaty steps, sparkly toes.' },
+
+  // ---------------- pet accessories (140+) ----------------
+  140: { name: 'Pet Collar', kind: 'tool', tier: 'wood',
+    recipe: { [B.FLOWER_RED]: 2, [B.GLOW]: 1 },
+    icon: '🎀', color: '#ff8fab', desc: 'A colorful collar for your pet. Stand near a tamed pet to put it on.' },
+  // ---------------- Phase 8: portal key (141) ----------------
+  141: { name: 'Flint & Steel', kind: 'tool', tier: 'stone',
+    recipe: { [B.STONE]: 2, [B.WOOD]: 1 },
+    icon: '🪔', color: '#8f959e', desc: 'Sparks a flame. Right-click a 4x5 obsidian frame to open a realm portal.' },
+
+  // ---------------- Phase 4: farming & fishing tools (144+) ----------------
+  144: { name: 'Wooden Hoe', kind: 'tool', tier: 'wood', toolType: 'hoe',
+    recipe: { [B.WOOD]: 2, [B.PLANKS]: 1 },
+    icon: '🌱', color: '#a4713f', desc: 'Till dirt & grass into farmland. Right-click soil to till.' },
+  145: { name: 'Fishing Rod', kind: 'tool', tier: 'wood', toolType: 'rod',
+    recipe: { [B.WOOD]: 3, [B.LEAVES]: 2 },
+    icon: '🎣', color: '#8a5a32', desc: 'Right-click near water to cast a line.' },
+  146: { name: 'Furnace', kind: 'tool', tier: 'stone', placesBlock: 82, // 82 = B.FURNACE
+    recipe: { [B.STONE]: 6, [B.WOOD]: 2 },
+    icon: '🔥', color: '#8f959e', desc: 'Smelt raw food into tasty meals. Right-click a placed furnace to cook.' },
 };
 
 // stamp numeric ids onto entries for convenient iteration

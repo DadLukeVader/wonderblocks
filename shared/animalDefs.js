@@ -32,6 +32,8 @@ export const ANIMAL_DEFS = {
   turtle:    { label: 'Turtle',    favoriteFood: F_CARROT,  feedsToTame: 3, biomes: ['water', 'beach'], swim: true, slow: true },
   bee:       { label: 'Bee',       favoriteFood: F_SEEDS,   feedsToTame: 3, biomes: ['forest', 'meadow', 'village'], fly: true, wings: true },
   sheep:     { label: 'Sheep',     favoriteFood: F_APPLE,   feedsToTame: 3, biomes: ['meadow', 'village'], hop: true, graze: true },
+  horse:     { label: 'Horse',     favoriteFood: F_APPLE,   feedsToTame: 3, biomes: ['meadow', 'village'], hop: true, rideable: true },
+  pig:       { label: 'Pig',       favoriteFood: F_CARROT,  feedsToTame: 2, biomes: ['meadow', 'village'], hop: true, rideable: true },
 };
 
 // Cute auto-names given on taming (also used by legacy adoptPet).
@@ -49,6 +51,8 @@ export const PET_NAMES = {
   turtle: ['Shelly', 'Tilly', 'Pebble', 'Moss'],
   bee: ['Buzzy', 'Daisy', 'Pollen', 'Zippy'],
   sheep: ['Woolly', 'Cotton', 'Fluff', 'Marshmallow'],
+  horse: ['Thunder', 'Clover', 'Dusty', 'Willow'],
+  pig: ['Bacon', 'Truffle', 'Pudding', 'Hamlet'],
 };
 
 export function petName(kind) {

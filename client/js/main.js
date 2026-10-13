@@ -1,6 +1,6 @@
 // WonderBlocks main: boot, game loop, building, multiplayer glue, saving.
 import * as THREE from 'three';
-import { B, blockDef, isBreakable } from 'wb-shared/blocks.js?v=18';
+import { B, blockDef, isBreakable } from 'wb-shared/blocks.js?v=19';
 import { getSpawn, biomeNameAt } from 'wb-shared/worldgen.js?v=18';
 import { MSG, ROLES, makeRoomCode } from 'wb-shared/protocol.js?v=18';
 import { World } from './world.js?v=18';
@@ -11,9 +11,12 @@ import { Input } from './input.js?v=18';
 import { Inventory } from './inventory.js?v=18';
 import { UI } from './ui.js?v=18';
 import { CraftingUI } from './crafting.js?v=18';
-import { isItem, itemDef, toolTimeMultiplier } from 'wb-shared/items.js?v=18';
+import { FarmingSystem } from './farming.js?v=19';
+import { FishingSystem } from './fishing.js?v=19';
+import { FurnaceSystem, FurnaceUI } from './furnace.js?v=19';
+import { isItem, itemDef, toolTimeMultiplier } from 'wb-shared/items.js?v=19';
 import { CritterManager } from './animals.js?v=18';
-import { FOOD_DROPS, foodDef, isFood } from 'wb-shared/foods.js?v=18';
+import { FOOD_DROPS, FOOD_VALUES, foodDef, isFood } from 'wb-shared/foods.js?v=19';
 import { ANIMAL_DEFS } from 'wb-shared/animalDefs.js?v=18';
 import { QuestManager } from './quests.js?v=18';
 import { AudioSys } from './audio.js?v=18';
@@ -67,6 +70,10 @@ class Game {
       onAdopt: () => this.adoptPet(),
       onFeed: () => this.feedPet(),
       onTogglePets: () => this.togglePets(),
+      onRide: () => this.mountPet(),
+      onBreed: () => this.breedPet(),
+      onCollar: () => this.collarPet(),
+      onDismount: () => this.dismountPet(),
       onToggleUnlimited: v => { this.inv.unlimited = v; this.ui.renderHotbar(this.inv); },
       onToggleInvert: v => { this.settings.invertLook = v; this.ui.h.invertLook = v; this.ui.toast(v ? '🔄 Look inverted' : '🔄 Look normal'); },
       onVolume: v => { this.settings.volume = v; this.audio.volume = v; if (this.audio.master) this.audio.master.gain.value = this.audio.muted ? 0 : v; },
@@ -77,6 +84,10 @@ class Game {
     this.ui.h.invertLook = this.settings.invertLook;
 
     // crafting panel (C key / 🛠️ toolbar button)
+    this.farming = new FarmingSystem(this);
+    this.fishing = new FishingSystem(this);
+    this.furnaceUI = new FurnaceUI();
+    this.furnace = new FurnaceSystem(this, this.furnaceUI);
     this.crafting = new CraftingUI({
       onToast: m => this.ui.toast(m),
       playSound: () => { this.audio.ensure(); this.audio.pop(); },
@@ -145,6 +156,7 @@ class Game {
     this.player.onHunger = () => vitals();
     this.player.onEat = () => vitals();
     this.player.onDeath = (cause) => {
+      if (this.player.riding) this.dismountPet(); // don't respawn glued to a horse
       const msgs = { fall: 'took a long fall', starve: 'starved', mob: 'was defeated', drown: 'drowned' };
       this.ui.toast(`💀 You ${msgs[cause] || 'died'}! Respawning…`);
       setTimeout(() => { this.player.revive(); this.respawn(); vitals(); }, 2000);
@@ -349,7 +361,7 @@ class Game {
         quests: this.quests.serialize(),
         tutorialDone: this.tutorialDoneFlag,
         pet: this.pet ? { kind: this.pet.kind, name: this.pet.name } : null, // legacy (read path only)
-        pets: this.critters ? this.critters.myPets().map(c => ({ kind: c.kind, name: c.name })) : [],
+        pets: this.critters ? this.critters.myPets().map(c => ({ kind: c.kind, name: c.name, collar: c.collarColor || null, baby: !!c.baby })) : [],
       }));
     } catch { /* noop */ }
   }
@@ -443,6 +455,57 @@ class Game {
     this.audio.click();
     this.ui.toast(to === 'stay' ? '🐾 Pets are staying put.' : '🐾 Pets are following you!');
   }
+  // ---------- Phase 5: breeding / riding / collars ----------
+  mountPet() {
+    if (this.player.riding) return;
+    const c = this.critters.nearestRideable(this.player.pos);
+    if (!c) return;
+    this.player.riding = c;
+    c.ridden = true;
+    c.mode = 'follow';
+    this.ui.hideRide();
+    this.audio.pop();
+    this.ui.toast(`🐴 You're riding ${c.name || 'your ' + c.kind}! Jump to hop, tap ⬇️ Dismount to get off.`);
+  }
+  dismountPet() {
+    const c = this.player.riding;
+    if (!c) return;
+    c.ridden = false;
+    this.player.riding = null;
+    this.ui.hideDismount();
+    this.audio.click();
+    this.ui.toast('⬇️ Dismounted.');
+  }
+  breedPet() {
+    const c = this.critters.nearestPet(this.player.pos);
+    if (!c || c.baby) return;
+    const r = this.critters.feedTamed(c, this.inv);
+    if (!r.ok) {
+      if (r.reason === 'nofood' && r.food) this.ui.toast(`You need ${r.food.icon} ${r.food.name} to breed ${c.name || 'this pet'}!`);
+      else if (r.reason === 'cooldown') this.ui.toast('💕 Give the new parents a little rest first!');
+      return;
+    }
+    this.audio.pop();
+    this.ui.hideBreed();
+    if (r.bred && r.baby) {
+      this.audio.quest();
+      const label = ANIMAL_DEFS[r.baby.kind].label;
+      this.ui.toast(`💕 A baby ${label} was born! Say hi to ${r.baby.name}!`);
+      this.ui.chatAdd('', `💕 ${r.parents[0].name} and ${r.parents[1].name} had a baby ${label} (${r.baby.name})!`, false, true);
+    } else {
+      this.ui.toast(`💕 ${c.name || 'Your pet'} is in love! Feed another ${ANIMAL_DEFS[c.kind].label} nearby.`);
+    }
+  }
+  collarPet() {
+    const c = this.critters.nearestPet(this.player.pos);
+    if (!c || c.collarColor) return;
+    if (this.inv.count(140) < 1) { this.ui.toast('You need a 🎀 Pet Collar! Craft one from the Tools tab.'); return; }
+    this.inv.remove(140, 1);
+    const color = this.critters.setCollarOn(c);
+    this.audio.pop();
+    this.ui.hideCollar();
+    this.ui.toast(`🎀 ${c.name || 'Your pet'} is wearing a fancy new collar!`);
+  }
   restorePet(saved) {
     // accepts legacy {kind,name}, {pets:[...]}, or an array — restores via the manager
     const list = saved?.pets || (Array.isArray(saved) ? saved : (saved ? [saved] : []));
@@ -451,6 +514,10 @@ class Game {
       if (!s || !ANIMAL_DEFS[s.kind]) continue;
       const c = this.critters.tameByKind(s.kind, s.name);
       if (c && !first) first = c;
+      if (c) { // Phase 5: restore collar + baby state
+        if (s.collar) c.setCollar(s.collar);
+        if (s.baby) c.setBaby();
+      }
     }
     if (first) this.pet = first; // legacy single-pet pointer (adopt button compat)
   }
@@ -582,6 +649,9 @@ class Game {
   breakBlock(x, y, z, id) {
     const def = blockDef(id);
     this.applyEdit(x, y, z, B.AIR);
+    // Phase 4 hooks: crop tracking + furnace contents.
+    if (this.farming) this.farming.onBreak(x, y, z);
+    if (id === B.FURNACE && this.furnace) this.furnace.onBreak(x, y, z);
     const drop = def.drop ?? id;
     this.inv.add(drop);
     // food bonus drops (animals subsystem)
@@ -599,12 +669,55 @@ class Game {
     if (Math.random() < 0.4) this.audio.pickup();
   }
 
+  // Right-click with food: plant on tilled soil (seeds/carrot/potato) or eat it.
+  tryEatOrPlant(sel, hit) {
+    if (hit.id === B.TILLED_SOIL) {
+      const crop = sel === 133 ? 'wheat' : sel === 131 ? 'carrot' : sel === 143 ? 'potato' : null;
+      if (crop) {
+        if (this.world.get(hit.x, hit.y + 1, hit.z) !== B.AIR) {
+          this.ui.toast('🌱 Need empty space above the soil!'); return;
+        }
+        if (!this.inv.remove(sel, 1)) return;
+        if (this.farming.plant(hit.x, hit.y + 1, hit.z, crop)) {
+          this.ui.toast(`🌱 Planted ${crop}!`);
+          this.audio.pop();
+        }
+        return;
+      }
+    }
+    const val = FOOD_VALUES[sel] ?? 2;
+    if (!this.inv.remove(sel, 1)) return;
+    this.player.eat(val);
+    const f = foodDef(sel);
+    this.ui.toast(`${f ? f.icon : '🍽️'} Ate ${f ? f.name : 'food'} (+${val} hunger)`);
+    this.audio.pickup();
+  }
+
   tryPlace(hit) {
     const sel = this.inv.selectedBlock();
-    if (isFood(sel)) { this.ui.toast("That's food — feed it to a wild animal instead! 🍎"); return; }
-    // Craftable utilities (torch/workbench) are items that resolve to a real block.
     const selItem = isItem(sel) ? itemDef(sel) : null;
+    // Hoe: till dirt/grass into farmland.
+    if (selItem && selItem.toolType === 'hoe' && (hit.id === B.DIRT || hit.id === B.GRASS)) {
+      this.applyEdit(hit.x, hit.y, hit.z, B.TILLED_SOIL);
+      this.audio.pop();
+      this.player.swing();
+      return;
+    }
+    // Fishing rod: cast near water.
+    if (selItem && selItem.toolType === 'rod') {
+      this.fishing.cast();
+      this.player.swing();
+      return;
+    }
+    // Craftable utilities (torch/workbench/furnace) are items that resolve to a real block.
     const placeId = selItem ? (selItem.placesBlock || null) : sel;
+    // Right-click a furnace with a non-block selected -> open the furnace UI.
+    if (hit.id === B.FURNACE && placeId == null) {
+      this.furnace.open(hit.x, hit.y, hit.z);
+      return;
+    }
+    // Food: plant seeds/carrot/potato on tilled soil, otherwise eat it.
+    if (isFood(sel)) { this.tryEatOrPlant(sel, hit); return; }
     if (placeId == null) return; // wielding a non-placeable item (sword, armor...): nothing to place
     const px = hit.x + hit.nx, py = hit.y + hit.ny, pz = hit.z + hit.nz;
     const existing = this.world.get(px, py, pz);
@@ -658,11 +771,23 @@ class Game {
       if (Math.hypot(mv.f, mv.s) > 0.3 && this.player.speed2d > 1) this.tutEvent('move');
       if (this.input.jumpHeld && this.player.vel.y > 3) this.tutEvent('jump');
     }
+    // Phase 5: riding — the mount is glued under the rider; the rider sits on top.
+    // Player physics still drive (faster + higher jump while riding); the horse
+    // mesh just follows visually so collisions/terrain never break.
+    const mount = this.player.riding;
+    if (mount) {
+      mount.g.position.set(this.player.pos.x, this.player.pos.y, this.player.pos.z);
+      mount.g.rotation.y = this.player.mesh.rotation.y;
+      this.player.mesh.position.y = this.player.pos.y + (mount.kind === 'horse' ? 1.45 : 0.95);
+    }
     this.player.updateCamera(this.camera);
     if (this.started) this.updateTargeting(dt);
     this.world.setTime(now / 1000); // water animation clock (uTime + texture frames)
     this.world.update(this.player.pos.x, this.player.pos.z);
     this.critters.update(dt, this.player.pos);
+    if (this.farming) this.farming.update(dt);
+    if (this.fishing) this.fishing.update(dt);
+    if (this.furnace) this.furnace.update(dt);
     if (this.monsters) {
       const isNight = this.world.isNight ? this.world.isNight() : false;
       this.monsters.update(dt, isNight, (x, z) => this.world.biomeAt ? this.world.biomeAt(x, z) : 'forest');
@@ -702,6 +827,27 @@ class Game {
     // stay/follow toggle for pets
     if (myPetCount > 0) this.ui.showPetToggle(this.critters.myPets()[0].mode);
     else this.ui.hidePetToggle();
+
+    // Phase 5: ride / breed / collar prompts (animals subsystem)
+    if (this.player.riding) {
+      this.ui.showDismount();
+      this.ui.hideRide(); this.ui.hideBreed(); this.ui.hideCollar();
+      this.ui.hideFeed(); this.ui.hideAdopt();
+    } else {
+      this.ui.hideDismount();
+      const rideable = this.critters.nearestRideable(this.player.pos);
+      if (rideable) this.ui.showRide(`🐴 Ride ${rideable.name || ANIMAL_DEFS[rideable.kind].label}`);
+      else this.ui.hideRide();
+      const pet = this.critters.nearestPet(this.player.pos);
+      if (pet && !pet.baby) {
+        const fav = ANIMAL_DEFS[pet.kind].favoriteFood;
+        if (this.inv.count(fav) > 0) this.ui.showBreed(`💕 Breed ${pet.name || ANIMAL_DEFS[pet.kind].label}`);
+        else this.ui.hideBreed();
+      } else this.ui.hideBreed();
+      if (pet && !pet.collarColor && this.inv.count(140) > 0)
+        this.ui.showCollar(`🎀 Collar ${pet.name || ANIMAL_DEFS[pet.kind].label}`);
+      else this.ui.hideCollar();
+    }
 
     // multiplayer pos sync 10Hz
     if (this.isMulti && now - this.lastPosSend > 100) {

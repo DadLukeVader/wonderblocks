@@ -102,6 +102,10 @@ export class UI {
         <button id="adoptbtn" class="hidden">🐾 Adopt pet</button>
         <button id="feedbtn" class="hidden">🍎 Feed</button>
         <button id="pettogglebtn" class="hidden">🐾 Pets: following</button>
+        <button id="ridebtn" class="hidden">🐴 Ride</button>
+        <button id="breedbtn" class="hidden">💕 Breed</button>
+        <button id="collarbtn" class="hidden">🎀 Collar</button>
+        <button id="dismountbtn" class="hidden">⬇️ Dismount</button>
       </div>
     </div>`);
 
@@ -123,6 +127,10 @@ export class UI {
     el('adoptbtn').addEventListener('click', () => this.h.onAdopt());
     el('feedbtn').addEventListener('click', () => this.h.onFeed());
     el('pettogglebtn').addEventListener('click', () => this.h.onTogglePets());
+    el('ridebtn').addEventListener('click', () => this.h.onRide());
+    el('breedbtn').addEventListener('click', () => this.h.onBreed());
+    el('collarbtn').addEventListener('click', () => this.h.onCollar());
+    el('dismountbtn').addEventListener('click', () => this.h.onDismount());
   }
 
   // ---------- menu ----------
@@ -498,6 +506,22 @@ export class UI {
     b.textContent = mode === 'stay' ? '🐾 Pets: staying \u2014 tap to follow' : '🐾 Pets: following \u2014 tap to stay';
   }
   hidePetToggle() { el('pettogglebtn').classList.add('hidden'); }
+  // Phase 5: ride / breed / collar / dismount prompts (same auto-hide pattern as feed)
+  _showTimed(id, key, label) {
+    const b = el(id);
+    b.classList.remove('hidden');
+    b.textContent = label;
+    clearTimeout(this[key]);
+    this[key] = setTimeout(() => b.classList.add('hidden'), 6000);
+  }
+  showRide(label) { this._showTimed('ridebtn', '_rideT', label); }
+  hideRide() { el('ridebtn').classList.add('hidden'); clearTimeout(this._rideT); }
+  showBreed(label) { this._showTimed('breedbtn', '_breedT', label); }
+  hideBreed() { el('breedbtn').classList.add('hidden'); clearTimeout(this._breedT); }
+  showCollar(label) { this._showTimed('collarbtn', '_collarT', label); }
+  hideCollar() { el('collarbtn').classList.add('hidden'); clearTimeout(this._collarT); }
+  showDismount() { el('dismountbtn').classList.remove('hidden'); }
+  hideDismount() { el('dismountbtn').classList.add('hidden'); }
 
   // ---------- touch controls ----------
   buildTouch() {

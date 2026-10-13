@@ -33,6 +33,7 @@ export class Player {
     this.itemIconMap = new Map(); // itemId -> sprite path (set by main.js)
     this._texLoader = new THREE.TextureLoader();
     this.swingT = 0;
+    this.riding = null; // mounted critter (horse/pig) — rider drives its movement
     // Survival stats (Phase 1)
     this.health = 20; this.maxHealth = 20; // 10 hearts
     this.hunger = 20; this.maxHunger = 20; // 10 drumsticks
@@ -106,7 +107,7 @@ export class Player {
     const wl = Math.hypot(wx, wz);
     if (wl > 1) { wx /= wl; wz /= wl; }
 
-    const speed = this.inWater ? 3.4 : mv.sprint ? 6.8 : 4.4;
+    const speed = this.riding ? 7.6 : (this.inWater ? 3.4 : mv.sprint ? 6.8 : 4.4);
     const accel = this.inWater ? 18 : this.onGround ? 42 : 14;
     this.vel.x += (wx * speed - this.vel.x) * Math.min(1, accel * dt / Math.max(1, speed));
     this.vel.z += (wz * speed - this.vel.z) * Math.min(1, accel * dt / Math.max(1, speed));
@@ -121,7 +122,7 @@ export class Player {
       // Track fall speed for damage calculation
       if (!this.onGround && this.vel.y < this._fallPeak) this._fallPeak = this.vel.y;
       if (this.vel.y < -30) this.vel.y = -30;
-      if (mv.jump && this.onGround) { this.vel.y = 8.8; this.onGround = false; }
+      if (mv.jump && this.onGround) { this.vel.y = this.riding ? 10.5 : 8.8; this.onGround = false; }
     }
 
     this.pos.x += this.vel.x * dt;
