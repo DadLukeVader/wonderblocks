@@ -1,23 +1,23 @@
 // WonderBlocks main: boot, game loop, building, multiplayer glue, saving.
 import * as THREE from 'three';
-import { B, blockDef, isBreakable } from 'wb-shared/blocks.js?v=12';
-import { getSpawn, biomeNameAt } from 'wb-shared/worldgen.js?v=12';
-import { MSG, ROLES, makeRoomCode } from 'wb-shared/protocol.js?v=12';
-import { World } from './world.js?v=12';
-import { loadAtlas } from './textures.js?v=12';
-import { loadFaces } from './character.js?v=12';
-import { Player, RemotePlayer } from './player.js?v=12';
-import { Input } from './input.js?v=12';
-import { Inventory } from './inventory.js?v=12';
-import { UI } from './ui.js?v=12';
-import { CraftingUI } from './crafting.js?v=12';
-import { isItem, itemDef, toolTimeMultiplier } from 'wb-shared/items.js?v=12';
-import { CritterManager } from './animals.js?v=12';
-import { FOOD_DROPS, foodDef, isFood } from 'wb-shared/foods.js?v=12';
-import { ANIMAL_DEFS } from 'wb-shared/animalDefs.js?v=12';
-import { QuestManager } from './quests.js?v=12';
-import { AudioSys } from './audio.js?v=12';
-import { Net } from './net.js?v=12';
+import { B, blockDef, isBreakable } from 'wb-shared/blocks.js?v=13';
+import { getSpawn, biomeNameAt } from 'wb-shared/worldgen.js?v=13';
+import { MSG, ROLES, makeRoomCode } from 'wb-shared/protocol.js?v=13';
+import { World } from './world.js?v=13';
+import { loadAtlas } from './textures.js?v=13';
+import { loadFaces } from './character.js?v=13';
+import { Player, RemotePlayer } from './player.js?v=13';
+import { Input } from './input.js?v=13';
+import { Inventory } from './inventory.js?v=13';
+import { UI } from './ui.js?v=13';
+import { CraftingUI } from './crafting.js?v=13';
+import { isItem, itemDef, toolTimeMultiplier } from 'wb-shared/items.js?v=13';
+import { CritterManager } from './animals.js?v=13';
+import { FOOD_DROPS, foodDef, isFood } from 'wb-shared/foods.js?v=13';
+import { ANIMAL_DEFS } from 'wb-shared/animalDefs.js?v=13';
+import { QuestManager } from './quests.js?v=13';
+import { AudioSys } from './audio.js?v=13';
+import { Net } from './net.js?v=13';
 
 const SAVE_KEY = 'wb_demo';
 const REACH = 6;
@@ -59,7 +59,7 @@ class Game {
       onLeave: () => this.leave(),
       onRespawn: () => this.respawn(),
       onSendChat: text => this.sendChat(text),
-      onSelectHotbar: i => { this.inv.sel = i; this.ui.renderHotbar(this.inv); this.audio.click(); },
+      onSelectHotbar: i => { this.inv.sel = i; this.ui.renderHotbar(this.inv); this.audio.click(); this.updateHeldItem(); },
       onHotbarAssign: (slot, id) => { this.inv.setHotbarSlot(slot, id); this.ui.renderHotbar(this.inv); this.tutEvent('inventory'); this.audio.click(); },
       onToolbar: a => this.toolbar(a),
       onEmote: e => this.doEmote(e),
@@ -158,6 +158,12 @@ class Game {
     }
     this.critters = new CritterManager(this.scene, this.world);
     await this.critters.spawnInitial();
+    // Load item sprites for the 3D held-item display
+    try {
+      const { loadItemIcons } = await import('./itemArt.js?v=13');
+      this.player.itemIconMap = await loadItemIcons();
+      this.updateHeldItem();
+    } catch { /* held item is decorative */ }
     // highlight + ghost preview
     this.highlight = new THREE.LineSegments(
       new THREE.EdgesGeometry(new THREE.BoxGeometry(1.002, 1.002, 1.002)),
@@ -290,6 +296,14 @@ class Game {
     this.player.vel.set(0, 0, 0);
     this.ui.toast('📍 Respawned at the village!');
     this.ui.showPlayers(false);
+  }
+  // Update the 3D item shown in the player's hand from the hotbar selection.
+  updateHeldItem() {
+    if (!this.player || !this.inv) return;
+    const id = this.inv.hotbar[this.inv.sel];
+    // Only show items (tools/weapons), not blocks
+    if (id && isItem(id)) this.player.setHeldItem(id);
+    else this.player.setHeldItem(null);
   }
   leave() {
     if (!this.isMulti) this.saveDemo();
@@ -537,6 +551,7 @@ class Game {
       }
     }
     this.audio.breakB();
+    this.player.swing();
     this.quests.handle('break', id);
     this.tutEvent('break');
     if (Math.random() < 0.4) this.audio.pickup();

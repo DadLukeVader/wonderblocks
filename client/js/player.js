@@ -1,7 +1,7 @@
 // WonderBlocks player: AABB voxel physics, swimming, third-person orbit camera.
 import * as THREE from 'three';
-import { B, isSolid } from 'wb-shared/blocks.js?v=12';
-import { buildCharacter, animateCharacter } from './character.js?v=12';
+import { B, isSolid } from 'wb-shared/blocks.js?v=13';
+import { buildCharacter, animateCharacter } from './character.js?v=13';
 
 const PW = 0.3, PH = 1.8, EYE = 1.62;
 
@@ -28,6 +28,11 @@ export class Player {
     this.emoteUntil = 0;
     this.firstPerson = false;
     this.speed2d = 0;
+    this.heldMesh = null;
+    this.heldItemId = null;
+    this.itemIconMap = new Map(); // itemId -> sprite path (set by main.js)
+    this._texLoader = new THREE.TextureLoader();
+    this.swingT = 0;
   }
 
   solidAt(bx, by, bz) { return isSolid(this.world.get(bx, by, bz)); }
@@ -130,6 +135,7 @@ export class Player {
 
     // animation
     this.walkPhase += dt * (2 + this.speed2d * 1.9);
+    if (this.swingT > 0) this.swingT = Math.max(0, this.swingT - dt);
     let mode = 'idle';
     if (this.emote && performance.now() < this.emoteUntil) mode = this.emote;
     else if (this.inWater && this.speed2d > 0.5) mode = 'swim';
@@ -137,7 +143,16 @@ export class Player {
     else if (this.speed2d > 0.6) mode = 'walk';
     this.anim = mode;
     animateCharacter(this.parts, mode, this.walkPhase);
+    // Tool swing: raise and chop the right arm
+    if (this.swingT > 0) {
+      const k = this.swingT / 0.35; // 1 -> 0
+      this.parts.armR.rotation.x = -2.2 * Math.sin(k * Math.PI);
+      this.parts.armR.rotation.z = -0.3;
+    }
   }
+
+  // Trigger a tool swing animation (call when mining/attacking)
+  swing() { this.swingT = 0.35; }
 
   playEmote(e) { this.emote = e; this.emoteUntil = performance.now() + 2600; }
 
@@ -147,6 +162,32 @@ export class Player {
   }
 
   headPos() { return new THREE.Vector3(this.pos.x, this.pos.y + EYE, this.pos.z); }
+
+  // Show the selected hotbar item in the character's right hand.
+  // itemId: numeric item id, or null to hide. Uses the itemIconMap (itemId -> sprite path).
+  setHeldItem(itemId) {
+    if (itemId === this.heldItemId) return;
+    this.heldItemId = itemId;
+    // Remove old mesh
+    if (this.heldMesh) {
+      this.parts.heldAnchor.remove(this.heldMesh);
+      if (this.heldMesh.material.map) this.heldMesh.material.map.dispose();
+      this.heldMesh.material.dispose();
+      this.heldMesh = null;
+    }
+    if (!itemId) return;
+    const path = this.itemIconMap.get(itemId);
+    if (!path) return; // no sprite — leave hand empty
+    const tex = this._texLoader.load(path);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide });
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.5), mat);
+    // Angle it like a held tool
+    mesh.rotation.set(0.3, -0.4, -0.5);
+    mesh.position.set(0.05, -0.1, 0.05);
+    this.parts.heldAnchor.add(mesh);
+    this.heldMesh = mesh;
+  }
 
   updateCamera(camera) {
     const head = this.headPos();

@@ -7,9 +7,9 @@
 // have their meshes disposed and are dropped from the cache. Player edits
 // overlay base terrain and are re-applied if a chunk regenerates after eviction.
 import * as THREE from 'three';
-import { B, blockDef } from 'wb-shared/blocks.js?v=12';
-import { CHUNK, WORLD_Y, ENDLESS_WORLD, buildChunkData } from 'wb-shared/worldgen.js?v=12';
-import { getAtlas, tileUV, makeWaterTexture } from './textures.js?v=12';
+import { B, blockDef } from 'wb-shared/blocks.js?v=13';
+import { CHUNK, WORLD_Y, ENDLESS_WORLD, buildChunkData } from 'wb-shared/worldgen.js?v=13';
+import { getAtlas, tileUV, makeWaterTexture } from './textures.js?v=13';
 
 export { CHUNK, WORLD_Y };
 

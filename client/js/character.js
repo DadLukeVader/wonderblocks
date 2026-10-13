@@ -69,6 +69,11 @@ export function buildCharacter(o = {}, faceTex = null) {
     g.add(arm);
     parts[s < 0 ? 'armL' : 'armR'] = arm;
   }
+  // held-item anchor on the right hand (for tools/weapons)
+  const heldAnchor = new THREE.Group();
+  heldAnchor.position.set(0.38, 0.75, 0.15); // at the right hand, slightly forward
+  g.add(heldAnchor);
+  parts.heldAnchor = heldAnchor;
   // head group (pivot at neck y=1.32)
   const headG = new THREE.Group(); headG.position.set(0, 1.32, 0); g.add(headG); parts.headG = headG;
   if (faceTex) {

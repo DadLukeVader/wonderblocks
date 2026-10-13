@@ -9,9 +9,9 @@
 // Inventory mutation is client-side (inventories are local by architecture);
 // onCrafted lets main.js announce the craft to multiplayer.
 
-import { ITEMS, ITEM_CATS, itemDef, canCraft, craftItem, ingredientName } from 'wb-shared/items.js?v=12';
-import { blockDef } from 'wb-shared/blocks.js?v=12';
-import { loadItemIcons } from './itemArt.js?v=12';
+import { ITEMS, ITEM_CATS, itemDef, canCraft, craftItem, ingredientName } from 'wb-shared/items.js?v=13';
+import { blockDef } from 'wb-shared/blocks.js?v=13';
+import { loadItemIcons } from './itemArt.js?v=13';
 
 const TOOL_BLURB = { pickaxe: 'stone, ore & brick', axe: 'wood & planks', shovel: 'dirt, sand & snow' };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
