@@ -135,6 +135,15 @@ class Game {
     await this.world.bootAround(spawnPos[0], spawnPos[2], p => this.ui.loading(0.05 + p * 0.85, 'Growing the world… 🌱'));
     const faceTex = this.faceTexs ? this.faceTexs[(Math.random() * this.faceTexs.length) | 0] : null;
     this.player = new Player(this.scene, this.world, this.ui.char, spawnPos, faceTex);
+    // Failsafe: stale saves can place the player inside solid terrain (camera
+    // collapses into the character). Lift to open air, or reset to spawn.
+    {
+      const p = this.player.pos;
+      const solidAt = (x, y, z) => { const b = this.world.get(Math.floor(x), Math.floor(y), Math.floor(z)); return b !== B.AIR && blockDef(b).solid; };
+      let guard = 0;
+      while (guard++ < 80 && solidAt(p.x, p.y, p.z)) p.y += 1;
+      if (guard >= 80 || p.y >= 63) { const s = getSpawn(); p.set(s[0], s[1], s[2]); }
+    }
     this.critters = new CritterManager(this.scene, this.world);
     await this.critters.spawnInitial();
     // highlight + ghost preview
