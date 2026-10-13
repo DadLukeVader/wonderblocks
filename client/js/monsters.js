@@ -79,18 +79,21 @@ export class MonsterManager {
 
   spawn(key, def, x, y, z) {
     const s = def.scale || 1;
-    const geo = new THREE.BoxGeometry(0.6 * s, 0.8 * s, 0.6 * s);
-    const mat = new THREE.MeshLambertMaterial({ color: def.color });
-    const mesh = new THREE.Mesh(geo, mat);
-    // Glowing eyes
-    const eyeGeo = new THREE.BoxGeometry(0.1, 0.1, 0.05);
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff3333 });
-    for (const ex of [-0.15, 0.15]) {
-      const eye = new THREE.Mesh(eyeGeo, eyeMat);
-      eye.position.set(ex * s, 0.15 * s, 0.31 * s);
-      mesh.add(eye);
+    // Gemini sprite billboard (falls back to colored box if art missing)
+    let mesh;
+    const spritePath = `art/sprites/${key}.png`;
+    try {
+      const tex = new THREE.TextureLoader().load(spritePath);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
+      mesh = new THREE.Sprite(mat);
+      mesh.scale.set(1.0 * s, 1.2 * s, 1);
+    } catch {
+      const geo = new THREE.BoxGeometry(0.6 * s, 0.8 * s, 0.6 * s);
+      const mat = new THREE.MeshLambertMaterial({ color: def.color });
+      mesh = new THREE.Mesh(geo, mat);
     }
-    const pos = new THREE.Vector3(x, y, z);
+    const pos = new THREE.Vector3(x, y + 0.6 * s, z);
     mesh.position.copy(pos);
     this.scene.add(mesh);
     this.monsters.push({ key, def, mesh, pos, health: def.health });

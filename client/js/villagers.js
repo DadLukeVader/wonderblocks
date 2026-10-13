@@ -6,10 +6,10 @@
 import {
   VILLAGER_PROFESSIONS, VILLAGER_GREETINGS, EMERALD,
   REP_DISCOUNT_THRESHOLD, applyRepDiscount,
-} from 'wb-shared/villagerDefs.js?v=21';
-import { itemDef } from 'wb-shared/items.js?v=21';
-import { foodDef } from 'wb-shared/foods.js?v=21';
-import { blockDef } from 'wb-shared/blocks.js?v=21';
+} from 'wb-shared/villagerDefs.js?v=22';
+import { itemDef } from 'wb-shared/items.js?v=22';
+import { foodDef } from 'wb-shared/foods.js?v=22';
+import { blockDef } from 'wb-shared/blocks.js?v=22';
 
 // Village center (matches shared/worldgen.js Wonder Village)
 const VILLAGE_X = 64, VILLAGE_Z = 64, VILLAGE_R = 20;
@@ -72,6 +72,32 @@ export class VillagerManager {
 
   _buildMesh(def) {
     const g = new THREE.Group();
+    // Gemini sprite billboard (profession: farmer/blacksmith/butcher/shopkeeper)
+    const profession = (def.profession || '').toLowerCase();
+    if (['farmer', 'blacksmith', 'butcher', 'shopkeeper'].includes(profession)) {
+      try {
+        const tex = new THREE.TextureLoader().load(`art/sprites/${profession}.png`);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+        sprite.scale.set(1.1, 1.6, 1);
+        sprite.position.y = 0.8;
+        g.add(sprite);
+      } catch { /* fall through to box model */ }
+      if (g.children.length > 0) {
+        // Keep the name label below
+        const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
+        const ctx = cv.getContext('2d');
+        ctx.font = 'bold 28px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#000000'; ctx.lineWidth = 4;
+        ctx.strokeText(def.name, 128, 40); ctx.fillText(def.name, 128, 40);
+        const tex = new THREE.CanvasTexture(cv);
+        const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+        label.scale.set(1.6, 0.4, 1);
+        label.position.y = 1.9;
+        g.add(label);
+        return g;
+      }
+    }
     const mat = c => new THREE.MeshLambertMaterial({ color: c });
     // Body (shirt)
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.7, 0.35), mat(def.shirtColor));

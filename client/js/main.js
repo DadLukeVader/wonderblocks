@@ -1,26 +1,26 @@
 // WonderBlocks main: boot, game loop, building, multiplayer glue, saving.
 import * as THREE from 'three';
-import { B, blockDef, isBreakable } from 'wb-shared/blocks.js?v=21';
-import { getSpawn, getDimensionSpawn, biomeNameAt, DIM, DIM_NAMES, WORLD_Y, buildChunkData } from 'wb-shared/worldgen.js?v=21';
-import { MSG, ROLES, makeRoomCode } from 'wb-shared/protocol.js?v=21';
-import { World } from './world.js?v=21';
-import { loadAtlas } from './textures.js?v=21';
-import { loadFaces } from './character.js?v=21';
-import { Player, RemotePlayer } from './player.js?v=21';
-import { Input } from './input.js?v=21';
-import { Inventory } from './inventory.js?v=21';
-import { UI } from './ui.js?v=21';
-import { CraftingUI } from './crafting.js?v=21';
-import { FarmingSystem } from './farming.js?v=21';
-import { FishingSystem } from './fishing.js?v=21';
-import { FurnaceSystem, FurnaceUI } from './furnace.js?v=21';
-import { isItem, itemDef, toolTimeMultiplier } from 'wb-shared/items.js?v=21';
-import { CritterManager } from './animals.js?v=21';
-import { FOOD_DROPS, FOOD_VALUES, foodDef, isFood } from 'wb-shared/foods.js?v=21';
-import { ANIMAL_DEFS } from 'wb-shared/animalDefs.js?v=21';
-import { QuestManager } from './quests.js?v=21';
-import { AudioSys } from './audio.js?v=21';
-import { Net } from './net.js?v=21';
+import { B, blockDef, isBreakable } from 'wb-shared/blocks.js?v=22';
+import { getSpawn, getDimensionSpawn, biomeNameAt, DIM, DIM_NAMES, WORLD_Y, buildChunkData } from 'wb-shared/worldgen.js?v=22';
+import { MSG, ROLES, makeRoomCode } from 'wb-shared/protocol.js?v=22';
+import { World } from './world.js?v=22';
+import { loadAtlas } from './textures.js?v=22';
+import { loadFaces } from './character.js?v=22';
+import { Player, RemotePlayer } from './player.js?v=22';
+import { Input } from './input.js?v=22';
+import { Inventory } from './inventory.js?v=22';
+import { UI } from './ui.js?v=22';
+import { CraftingUI } from './crafting.js?v=22';
+import { FarmingSystem } from './farming.js?v=22';
+import { FishingSystem } from './fishing.js?v=22';
+import { FurnaceSystem, FurnaceUI } from './furnace.js?v=22';
+import { isItem, itemDef, toolTimeMultiplier } from 'wb-shared/items.js?v=22';
+import { CritterManager } from './animals.js?v=22';
+import { FOOD_DROPS, FOOD_VALUES, foodDef, isFood } from 'wb-shared/foods.js?v=22';
+import { ANIMAL_DEFS } from 'wb-shared/animalDefs.js?v=22';
+import { QuestManager } from './quests.js?v=22';
+import { AudioSys } from './audio.js?v=22';
+import { Net } from './net.js?v=22';
 
 const SAVE_KEY = 'wb_demo';
 const REACH = 6;
@@ -188,7 +188,7 @@ class Game {
     await this.critters.spawnInitial();
     // Hostile monsters (Phase 6)
     try {
-      const { MonsterManager } = await import('./monsters.js?v=21');
+      const { MonsterManager } = await import('./monsters.js?v=22');
       this.monsters = new MonsterManager(this.scene, this.world, this.player);
       this.monsters.onKill = (def) => {
         this.ui.toast(`⚔️ Defeated ${def.label}! +${def.xp} XP`);
@@ -206,7 +206,7 @@ class Game {
     } catch { /* villagers are optional */ }
     // Load item sprites for the 3D held-item display
     try {
-      const { loadItemIcons } = await import('./itemArt.js?v=21');
+      const { loadItemIcons } = await import('./itemArt.js?v=22');
       this.player.itemIconMap = await loadItemIcons();
       this.updateHeldItem();
     } catch { /* held item is decorative */ }

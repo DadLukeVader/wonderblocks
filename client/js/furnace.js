@@ -5,8 +5,8 @@
 // open the UI. Furnace contents are client-side; breaking a furnace returns
 // its contents to the inventory.
 
-import { B, blockDef } from 'wb-shared/blocks.js?v=21';
-import { SMELT_RECIPES, FUEL_IDS, foodDef } from 'wb-shared/foods.js?v=21';
+import { B, blockDef } from 'wb-shared/blocks.js?v=22';
+import { SMELT_RECIPES, FUEL_IDS, foodDef } from 'wb-shared/foods.js?v=22';
 
 export const SMELT_TIME = 10; // seconds per item
 
