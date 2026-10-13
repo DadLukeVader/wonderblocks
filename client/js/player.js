@@ -1,7 +1,7 @@
 // WonderBlocks player: AABB voxel physics, swimming, third-person orbit camera.
 import * as THREE from 'three';
-import { B, isSolid } from 'wb-shared/blocks.js?v=10';
-import { buildCharacter, animateCharacter } from './character.js?v=10';
+import { B, isSolid } from 'wb-shared/blocks.js?v=11';
+import { buildCharacter, animateCharacter } from './character.js?v=11';
 
 const PW = 0.3, PH = 1.8, EYE = 1.62;
 

@@ -1,5 +1,5 @@
 // WonderBlocks net client: WebSocket wrapper following shared/protocol.js.
-import { MSG } from 'wb-shared/protocol.js?v=10';
+import { MSG } from 'wb-shared/protocol.js?v=11';
 
 export class Net {
   constructor() {

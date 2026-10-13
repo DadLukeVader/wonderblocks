@@ -1,8 +1,8 @@
 // WonderBlocks UI: menus, HUD, inventory, chat, tutorial, touch controls.
-import { B, BLOCKS, CATEGORIES, blockDef } from 'wb-shared/blocks.js?v=10';
-import { FOODS, foodDef } from 'wb-shared/foods.js?v=10';
-import { ITEMS, isItem, itemDef, totalDefense } from 'wb-shared/items.js?v=10';
-import { SKIN_TONES, HAIR_STYLES, HAIR_COLORS, SHIRT_COLORS, PANTS_COLORS } from './character.js?v=10';
+import { B, BLOCKS, CATEGORIES, blockDef } from 'wb-shared/blocks.js?v=11';
+import { FOODS, foodDef } from 'wb-shared/foods.js?v=11';
+import { ITEMS, isItem, itemDef, totalDefense } from 'wb-shared/items.js?v=11';
+import { SKIN_TONES, HAIR_STYLES, HAIR_COLORS, SHIRT_COLORS, PANTS_COLORS } from './character.js?v=11';
 
 const SWATCH = {
   1: '#79c95c', 2: '#9a6a44', 3: '#b9b9c4', 4: '#f0dfa4', 5: '#8a5a32', 6: '#58b368',
@@ -13,6 +13,17 @@ const SWATCH = {
   30: '#58b368', 31: '#a4713f', 32: '#bfe6f7', 33: '#a9a9b5', 34: '#f2f7ff', 36: '#a4713f',
   37: '#c78f4f', 38: '#ff6b6b', 39: '#ffb84d', 40: '#d9a05e',
 };
+// Real block texture from the atlas (32px tiles, 8 cols) for inventory icons.
+function blockTexStyle(id) {
+  try {
+    const def = blockDef(id);
+    if (!def || def.tiles == null) return '';
+    const t = typeof def.tiles === 'number' ? def.tiles : def.tiles.side;
+    if (t == null) return '';
+    const x = (t % 8) * 32, y = Math.floor(t / 8) * 32;
+    return `background-image:url('art/atlas.png');background-position:-${x}px -${y}px;background-size:256px 256px;background-color:#ccc;`;
+  } catch { return ''; }
+}
 
 const el = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -229,9 +240,9 @@ export class UI {
       const it = isItem(id) ? itemDef(id) : null;
       const def = it || blockDef(id);
       const cnt = inv.count(id);
-      const sw = it ? it.color : (SWATCH[id] || '#ccc');
+      const swStyle = it ? `background:${it.color}` : blockTexStyle(id);
       return `<div class="slot ${i === inv.sel ? 'sel' : ''}" data-i="${i}">
-        <div class="sw" style="background:${sw};display:flex;align-items:center;justify-content:center">${it ? `<span style="font-size:20px">${it.icon}</span>` : ''}</div>
+        <div class="sw" style="${swStyle};display:flex;align-items:center;justify-content:center">${it ? `<span style="font-size:20px">${it.icon}</span>` : ''}</div>
         <span class="key">${i + 1}</span>
         <span class="cnt">${cnt === Infinity ? '∞' : cnt}</span>
         <span class="nm">${esc(def.name)}</span></div>`;
@@ -344,7 +355,7 @@ export class UI {
     const items = cat === 'food' ? foodItems : cats[cat];
     grid.innerHTML = (items.length ? items.map(it => `
       <div class="cell" data-id="${it.id}" data-food="${cat === 'food' ? 1 : 0}" title="${esc(it.desc || it.name)}">
-        <div class="sw" style="background:${cat === 'food' ? it.color : (SWATCH[it.id] || '#ccc')}">${cat === 'food' ? foodDef(it.id).icon : ''}</div>
+        <div class="sw" style="${cat === 'food' ? `background:${it.color}` : blockTexStyle(it.id)}">${cat === 'food' ? foodDef(it.id).icon : ''}</div>
         <span class="cnt">${it.count === Infinity ? '∞' : it.count}</span>
         <span class="nm">${esc(it.name)}</span></div>`).join('')
       : '<p class="note">No food yet \u2014 break leaves, berry bushes & tall grass!</p>');
