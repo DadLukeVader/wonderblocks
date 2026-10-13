@@ -9,11 +9,11 @@
 // (threshold model — see shared/animalDefs.js). Tamed pets follow you; the
 // stay/follow toggle (setPetsMode) parks them in place.
 import * as THREE from 'three';
-import { B } from 'wb-shared/blocks.js';
-import { biomeNameAt, getSpawn } from 'wb-shared/worldgen.js';
-import { ANIMAL_DEFS, petName } from 'wb-shared/animalDefs.js';
-import { foodDef } from 'wb-shared/foods.js';
-import { loadAnimalTextures } from './animalArt.js';
+import { B } from 'wb-shared/blocks.js?v=8';
+import { biomeNameAt, getSpawn } from 'wb-shared/worldgen.js?v=8';
+import { ANIMAL_DEFS, petName } from 'wb-shared/animalDefs.js?v=8';
+import { foodDef } from 'wb-shared/foods.js?v=8';
+import { loadAnimalTextures } from './animalArt.js?v=8';
 
 // One box part. tex (optional) replaces the flat color — used for the body.
 function part(w, h, d, color, x = 0, y = 0, z = 0, tex = null) {
