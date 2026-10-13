@@ -1,23 +1,23 @@
 // WonderBlocks main: boot, game loop, building, multiplayer glue, saving.
 import * as THREE from 'three';
-import { B, blockDef, isBreakable } from 'wb-shared/blocks.js?v=13';
-import { getSpawn, biomeNameAt } from 'wb-shared/worldgen.js?v=13';
-import { MSG, ROLES, makeRoomCode } from 'wb-shared/protocol.js?v=13';
-import { World } from './world.js?v=13';
-import { loadAtlas } from './textures.js?v=13';
-import { loadFaces } from './character.js?v=13';
-import { Player, RemotePlayer } from './player.js?v=13';
-import { Input } from './input.js?v=13';
-import { Inventory } from './inventory.js?v=13';
-import { UI } from './ui.js?v=13';
-import { CraftingUI } from './crafting.js?v=13';
-import { isItem, itemDef, toolTimeMultiplier } from 'wb-shared/items.js?v=13';
-import { CritterManager } from './animals.js?v=13';
-import { FOOD_DROPS, foodDef, isFood } from 'wb-shared/foods.js?v=13';
-import { ANIMAL_DEFS } from 'wb-shared/animalDefs.js?v=13';
-import { QuestManager } from './quests.js?v=13';
-import { AudioSys } from './audio.js?v=13';
-import { Net } from './net.js?v=13';
+import { B, blockDef, isBreakable } from 'wb-shared/blocks.js?v=14';
+import { getSpawn, biomeNameAt } from 'wb-shared/worldgen.js?v=14';
+import { MSG, ROLES, makeRoomCode } from 'wb-shared/protocol.js?v=14';
+import { World } from './world.js?v=14';
+import { loadAtlas } from './textures.js?v=14';
+import { loadFaces } from './character.js?v=14';
+import { Player, RemotePlayer } from './player.js?v=14';
+import { Input } from './input.js?v=14';
+import { Inventory } from './inventory.js?v=14';
+import { UI } from './ui.js?v=14';
+import { CraftingUI } from './crafting.js?v=14';
+import { isItem, itemDef, toolTimeMultiplier } from 'wb-shared/items.js?v=14';
+import { CritterManager } from './animals.js?v=14';
+import { FOOD_DROPS, foodDef, isFood } from 'wb-shared/foods.js?v=14';
+import { ANIMAL_DEFS } from 'wb-shared/animalDefs.js?v=14';
+import { QuestManager } from './quests.js?v=14';
+import { AudioSys } from './audio.js?v=14';
+import { Net } from './net.js?v=14';
 
 const SAVE_KEY = 'wb_demo';
 const REACH = 6;
@@ -160,7 +160,7 @@ class Game {
     await this.critters.spawnInitial();
     // Load item sprites for the 3D held-item display
     try {
-      const { loadItemIcons } = await import('./itemArt.js?v=13');
+      const { loadItemIcons } = await import('./itemArt.js?v=14');
       this.player.itemIconMap = await loadItemIcons();
       this.updateHeldItem();
     } catch { /* held item is decorative */ }
