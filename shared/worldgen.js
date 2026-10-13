@@ -267,6 +267,15 @@ function _buildOrigin(seed) {
   // waterfall from sky island into a pond
   for (let y = iy - 1; y >= 24; y--) set(ix + 10, y, izz + 4, B.WATER);
 
+  // ---- guaranteed spawn pad: flat ground + open sky at (64,58), any seed ----
+  // (terrain height here varies by seed; without this the player can spawn
+  // inside a hill)
+  for (let x = 61; x <= 67; x++) for (let z = 55; z <= 61; z++) {
+    for (let y = 1; y <= 21; y++) set(x, y, z, y < 19 ? B.STONE : B.DIRT);
+    set(x, 22, z, B.GRASS);
+    for (let y = 23; y < WORLD_Y; y++) set(x, y, z, B.AIR);
+  }
+
   return data;
 }
 
