@@ -1,23 +1,23 @@
 // WonderBlocks main: boot, game loop, building, multiplayer glue, saving.
 import * as THREE from 'three';
-import { B, blockDef, isBreakable } from 'wb-shared/blocks.js?v=9';
-import { getSpawn, biomeNameAt } from 'wb-shared/worldgen.js?v=9';
-import { MSG, ROLES, makeRoomCode } from 'wb-shared/protocol.js?v=9';
-import { World } from './world.js?v=9';
-import { loadAtlas } from './textures.js?v=9';
-import { loadFaces } from './character.js?v=9';
-import { Player, RemotePlayer } from './player.js?v=9';
-import { Input } from './input.js?v=9';
-import { Inventory } from './inventory.js?v=9';
-import { UI } from './ui.js?v=9';
-import { CraftingUI } from './crafting.js?v=9';
-import { isItem, itemDef, toolTimeMultiplier } from 'wb-shared/items.js?v=9';
-import { CritterManager } from './animals.js?v=9';
-import { FOOD_DROPS, foodDef, isFood } from 'wb-shared/foods.js?v=9';
-import { ANIMAL_DEFS } from 'wb-shared/animalDefs.js?v=9';
-import { QuestManager } from './quests.js?v=9';
-import { AudioSys } from './audio.js?v=9';
-import { Net } from './net.js?v=9';
+import { B, blockDef, isBreakable } from 'wb-shared/blocks.js?v=10';
+import { getSpawn, biomeNameAt } from 'wb-shared/worldgen.js?v=10';
+import { MSG, ROLES, makeRoomCode } from 'wb-shared/protocol.js?v=10';
+import { World } from './world.js?v=10';
+import { loadAtlas } from './textures.js?v=10';
+import { loadFaces } from './character.js?v=10';
+import { Player, RemotePlayer } from './player.js?v=10';
+import { Input } from './input.js?v=10';
+import { Inventory } from './inventory.js?v=10';
+import { UI } from './ui.js?v=10';
+import { CraftingUI } from './crafting.js?v=10';
+import { isItem, itemDef, toolTimeMultiplier } from 'wb-shared/items.js?v=10';
+import { CritterManager } from './animals.js?v=10';
+import { FOOD_DROPS, foodDef, isFood } from 'wb-shared/foods.js?v=10';
+import { ANIMAL_DEFS } from 'wb-shared/animalDefs.js?v=10';
+import { QuestManager } from './quests.js?v=10';
+import { AudioSys } from './audio.js?v=10';
+import { Net } from './net.js?v=10';
 
 const SAVE_KEY = 'wb_demo';
 const REACH = 6;
@@ -45,7 +45,7 @@ class Game {
     this.remotes = new Map();
     this.isMulti = false;
     this.myRole = ROLES.BUILDER;
-    this.settings = { volume: 0.5, unlimited: false };
+    this.settings = { volume: 0.5, unlimited: false, invertLook: false };
     this.tutorial = -1;
     this.pet = null;
     this.breakState = null;
@@ -68,11 +68,13 @@ class Game {
       onFeed: () => this.feedPet(),
       onTogglePets: () => this.togglePets(),
       onToggleUnlimited: v => { this.inv.unlimited = v; this.ui.renderHotbar(this.inv); },
+      onToggleInvert: v => { this.settings.invertLook = v; this.ui.h.invertLook = v; this.ui.toast(v ? '🔄 Look inverted' : '🔄 Look normal'); },
       onVolume: v => { this.settings.volume = v; this.audio.volume = v; if (this.audio.master) this.audio.master.gain.value = this.audio.muted ? 0 : v; },
     });
     this.ui.playerName = localStorage.getItem('wb_name') || 'Builder';
     this.ui.h.unlimited = false;
     this.ui.h.volume = this.settings.volume;
+    this.ui.h.invertLook = this.settings.invertLook;
 
     // crafting panel (C key / 🛠️ toolbar button)
     this.crafting = new CraftingUI({
@@ -583,7 +585,8 @@ class Game {
     const { dx, dy } = this.input.consumeLook();
     if (this.input.enabled) {
       this.player.yaw -= dx * 0.0032 * (this.settings.sens || 1);
-      this.player.pitch -= dy * 0.0032 * (this.settings.sens || 1);
+      const inv = this.settings.invertLook ? -1 : 1;
+      this.player.pitch -= dy * 0.0032 * (this.settings.sens || 1) * inv;
       this.player.pitch = Math.max(-1.25, Math.min(1.25, this.player.pitch));
     }
     const mv = this.input.moveVec();

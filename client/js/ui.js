@@ -1,8 +1,8 @@
 // WonderBlocks UI: menus, HUD, inventory, chat, tutorial, touch controls.
-import { B, BLOCKS, CATEGORIES, blockDef } from 'wb-shared/blocks.js?v=9';
-import { FOODS, foodDef } from 'wb-shared/foods.js?v=9';
-import { ITEMS, isItem, itemDef, totalDefense } from 'wb-shared/items.js?v=9';
-import { SKIN_TONES, HAIR_STYLES, HAIR_COLORS, SHIRT_COLORS, PANTS_COLORS } from './character.js?v=9';
+import { B, BLOCKS, CATEGORIES, blockDef } from 'wb-shared/blocks.js?v=10';
+import { FOODS, foodDef } from 'wb-shared/foods.js?v=10';
+import { ITEMS, isItem, itemDef, totalDefense } from 'wb-shared/items.js?v=10';
+import { SKIN_TONES, HAIR_STYLES, HAIR_COLORS, SHIRT_COLORS, PANTS_COLORS } from './character.js?v=10';
 
 const SWATCH = {
   1: '#79c95c', 2: '#9a6a44', 3: '#b9b9c4', 4: '#f0dfa4', 5: '#8a5a32', 6: '#58b368',
@@ -408,6 +408,7 @@ export class UI {
       <button class="mbtn primary" id="p_resume">▶️ Resume</button>
       <button class="mbtn" id="p_help">❓ Controls</button>
       <label class="chk"><input type="checkbox" id="p_unlim" ${this.h.unlimited ? 'checked' : ''}> Unlimited blocks (creative)</label>
+      <label class="chk"><input type="checkbox" id="p_invert" ${this.h.invertLook ? 'checked' : ''}> Invert look (up/down)</label>
       <label class="chk">Sound <input type="range" id="p_vol" min="0" max="100" value="${this.h.volume * 100}"></label>
       ${isMultiplayer && isOwner ? `<p class="note">You own this world. Manage players in 👥.</p>` : ''}
       ${isMultiplayer ? `<p class="note">Invite friends: share code <b>${esc(this.roomCode || '')}</b><br>or the link:<br><code>${esc(location.origin + location.pathname)}?room=${esc(this.roomCode || '')}</code></p>` : ''}
@@ -417,6 +418,7 @@ export class UI {
     el('p_resume').onclick = () => { p.classList.add('hidden'); this.input.enabled = true; };
     el('p_help').onclick = () => { p.classList.add('hidden'); this.toggleHelp(); };
     el('p_unlim').onchange = e => this.h.onToggleUnlimited(e.target.checked);
+    el('p_invert').onchange = e => this.h.onToggleInvert(e.target.checked);
     el('p_vol').oninput = e => this.h.onVolume(e.target.value / 100);
     el('p_leave').onclick = () => this.h.onLeave();
   }
