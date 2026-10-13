@@ -267,10 +267,10 @@ function _buildOrigin(seed) {
   // waterfall from sky island into a pond
   for (let y = iy - 1; y >= 24; y--) set(ix + 10, y, izz + 4, B.WATER);
 
-  // ---- guaranteed spawn pad: flat ground + open sky at (64,40), any seed ----
-  // (north of Wonder Village, clear of houses; terrain height here varies by
-  // seed, without this the player can spawn inside a hill)
-  for (let x = 61; x <= 67; x++) for (let z = 37; z <= 43; z++) {
+  // ---- guaranteed spawn pad: flat ground + open sky at (60,64), any seed ----
+  // (west path, clear of houses; terrain height here varies by seed, without
+  // this the player can spawn inside a hill)
+  for (let x = 57; x <= 63; x++) for (let z = 61; z <= 67; z++) {
     for (let y = 1; y <= 21; y++) set(x, y, z, y < 19 ? B.STONE : B.DIRT);
     set(x, 22, z, B.GRASS);
     for (let y = 23; y < WORLD_Y; y++) set(x, y, z, B.AIR);
@@ -300,7 +300,7 @@ export function buildWorld(seed) {
 }
 
 export function getSpawn() {
-  return [64.5, 34.5, 40.5]; // north of Wonder Village, clear of houses
+  return [60.5, 34.5, 64.5]; // west path, clear of houses
 }
 
 export function biomeNameAt(x, z, seed = 0) {
